@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>竞品对标验证</title>
+<style>:root {
+  --bg-primary: #faf7f2;
+  --bg-secondary: #f3efe7;
+  --bg-card: #ffffff;
+  --bg-dark: #1a1a1a;
+  --text-primary: #2c2416;
+  --text-secondary: #6b5e4a;
+  --text-light: #a89b85;
+  --accent-rose: #c8956c;
+  --accent-rose-light: #e8c9b0;
+  --accent-gold: #b8944e;
+  --accent-sage: #8b9d83;
+  --accent-cream: #f5ebe0;
+  --border-light: #e5dcd0;
+  --border-medium: #d4c9b5;
+  --shadow-sm: 0 1px 3px rgba(44,36,22,0.06);
+  --shadow-md: 0 4px 16px rgba(44,36,22,0.08);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --font-heading: 'Georgia', 'Songti SC', 'STSong', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+  --font-mono: 'SF Mono', 'Fira Code', 'Menlo', monospace;
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: var(--font-body); background: var(--bg-primary); color: var(--text-primary); height: 100vh; display: flex; overflow: hidden; }
+
+/* SIDEBAR — removed, logo moved to header */
+
+/* HEADER */
+.header { padding: 12px 28px; border-bottom: 1px solid var(--border-light); background: var(--bg-card); display: flex; align-items: center; gap: 16px; }
+.header-brand { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.header-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent-rose), var(--accent-gold)); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 17px; font-family: var(--font-heading); }
+.header-logo-text { font-family: var(--font-heading); font-size: 18px; letter-spacing: 2px; color: var(--text-primary); line-height: 1.2; }
+.header-logo-sub { font-size: 9px; color: var(--text-light); letter-spacing: 3px; display: block; }
+.header-spacer { flex: 1; }
+.header-title { font-family: var(--font-heading); font-size: 15px; color: var(--text-secondary); }
+.header-meta { display: flex; align-items: center; gap: 14px; font-size: 11px; color: var(--text-light); flex-shrink: 0; }
+.header-meta .val { color: var(--text-secondary); font-weight: 500; }
+.header-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--accent-sage); flex-shrink: 0; }
+.header-status .dot { width: 7px; height: 7px; background: var(--accent-sage); border-radius: 50%; animation: pulse 2s infinite; }
+.header-model-tag { font-size: 10px; padding: 3px 8px; border-radius: 10px; background: #e8f0e8; color: var(--accent-sage); margin-left: 6px; }
+
+/* MAIN */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+/* CONTENT */
+.content { flex: 1; display: flex; min-height: 0; }
+
+/* CHAT */
+.chat-panel { flex: 5; display: flex; flex-direction: column; min-width: 0; background: var(--bg-primary); }
+.chat-messages { flex: 1; overflow-y: auto; padding: 20px 28px; display: flex; flex-direction: column; gap: 14px; }
+.message { display: flex; gap: 10px; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.message.user { flex-direction: row-reverse; margin-left: auto; }
+.message.user .msg-bubble { background: var(--accent-rose); color: white; border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg); }
+.msg-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.msg-avatar.agent { background: var(--accent-cream); color: var(--accent-rose); }
+.msg-avatar.user { background: var(--accent-rose); color: white; }
+.msg-bubble { max-width: 96%; padding: 16px 20px; border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px; background: var(--bg-card); border: 1px solid var(--border-light); font-size: 13px; line-height: 1.7; box-shadow: var(--shadow-sm); overflow-wrap: break-word; word-break: break-word; }
+.msg-bubble h3 { font-family: var(--font-heading); font-size: 16px; margin: 6px 0 8px; }
+.msg-bubble h4 { font-size: 14px; margin: 8px 0 6px; font-weight: 600; }
+.msg-bubble p { margin: 6px 0; font-size: 13px; }
+.msg-bubble table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px; table-layout: auto; }
+.msg-bubble th { background: var(--bg-secondary); padding: 8px 10px; text-align: left; color: var(--text-secondary); font-weight: 500; white-space: normal; word-break: break-word; }
+.msg-bubble td { padding: 8px 10px; border-bottom: 1px solid var(--border-light); font-size: 12px; }
+.msg-bubble ul, .msg-bubble ol { padding-left: 18px; margin: 6px 0; }
+.msg-bubble li { margin: 3px 0; font-size: 13px; }
+
+/* 状态提示 */
+.agent-status { color: var(--text-light); font-size: 13px; padding: 8px 0; }
+.agent-status .dot-pulse { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-rose); margin-right: 6px; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+
+/* ── 报告视觉组件 ── */
+.msg-bubble div, .msg-bubble section, .msg-bubble article { max-width: 100%; overflow-wrap: break-word; min-width: 0; }
+.msg-bubble img, .msg-bubble svg { max-width: 100%; height: auto; }
+.msg-bubble pre, .msg-bubble code { max-width: 100%; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+.msg-bubble > * { max-width: 100%; }
+
+.rc-metrics { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+.rc-metric { flex: 1 1 120px; min-width: 110px; max-width: 200px; background: var(--bg-secondary); border-radius: var(--radius-sm); padding: 12px 14px; text-align: center; border-left: 3px solid var(--accent-rose); overflow: hidden; }
+.rc-metric .val { font-size: 20px; font-weight: 700; color: var(--accent-rose); display: block; word-break: break-word; }
+.rc-metric .lbl { font-size: 11px; color: var(--text-light); margin-top: 4px; line-height: 1.4; }
+.rc-metric.accent-gold { border-left-color: var(--accent-gold); }
+.rc-metric.accent-gold .val { color: var(--accent-gold); }
+.rc-metric.accent-sage { border-left-color: var(--accent-sage); }
+.rc-metric.accent-sage .val { color: var(--accent-sage); }
+
+.rc-bar-chart { margin: 12px 0; }
+.rc-bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; min-width: 0; }
+.rc-bar-label { min-width: 60px; max-width: 100px; font-size: 12px; color: var(--text-secondary); text-align: right; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-bar-track { flex: 1; height: 18px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; position: relative; }
+.rc-bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; color: white; font-weight: 500; min-width: 24px; }
+.rc-bar-fill.c1 { background: var(--accent-rose); }
+.rc-bar-fill.c2 { background: var(--accent-gold); }
+.rc-bar-fill.c3 { background: var(--accent-sage); }
+
+.rc-compare { display: flex; gap: 12px; margin: 14px 0; flex-wrap: wrap; }
+.rc-brand-card { flex: 1; min-width: 160px; border: 2px solid var(--border-light); border-radius: var(--radius-md); overflow: hidden; background: var(--bg-card); }
+.rc-brand-card.brand-a { border-top: 3px solid var(--accent-rose); }
+.rc-brand-card.brand-b { border-top: 3px solid var(--accent-gold); }
+.rc-brand-card .brand-header { padding: 12px 16px 8px; font-family: var(--font-heading); font-size: 15px; font-weight: 600; word-break: break-word; }
+.rc-brand-card.brand-a .brand-header { color: var(--accent-rose); }
+.rc-brand-card.brand-b .brand-header { color: var(--accent-gold); }
+.rc-brand-card .brand-body { padding: 0 16px 14px; font-size: 12px; line-height: 1.8; }
+.rc-brand-card .brand-body .row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dotted var(--border-light); gap: 6px; }
+.rc-brand-card .brand-body .row:last-child { border-bottom: none; }
+.rc-brand-card .brand-body .row .k { color: var(--text-light); flex-shrink: 0; }
+.rc-brand-card .brand-body .row .v { font-weight: 500; word-break: break-word; }
+
+.rc-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; border-radius: var(--radius-sm); overflow: hidden; border: 1px solid var(--border-light); table-layout: auto; }
+.rc-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 12px 0; border-radius: var(--radius-sm); border: 1px solid var(--border-light); }
+.rc-table-wrap .rc-table { margin: 0; border: none; border-radius: 0; }
+.rc-table thead th { background: var(--accent-rose); color: white; padding: 10px 12px; font-weight: 500; font-size: 11px; text-align: left; white-space: normal; word-break: break-word; }
+.rc-table thead th:first-child { background: #7a5a3e; }
+.rc-table tbody td { padding: 9px 12px; border-bottom: 1px solid var(--border-light); background: var(--bg-card); font-size: 12px; word-break: break-word; }
+.rc-table tbody tr:nth-child(even) td { background: var(--bg-secondary); }
+.rc-table tbody td:first-child { font-weight: 500; color: var(--text-secondary); }
+/* 裸 table 兜底 */
+.rc-table-fallback { width: 100%; border-collapse: collapse; font-size: 12px; }
+.rc-table-fallback th { background: var(--bg-secondary); padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border-light); }
+.rc-table-fallback td { padding: 8px 10px; border-bottom: 1px solid var(--border-light); }
+
+.rc-insight { padding: 14px 18px; border-radius: var(--radius-sm); margin: 12px 0; font-size: 13px; line-height: 1.75; border-left: 4px solid; transition: box-shadow 0.2s; }
+.rc-insight:hover { box-shadow: var(--shadow-sm); }
+.rc-insight.tip { background: #f0f7f0; border-color: var(--accent-sage); }
+.rc-insight.warn { background: #fef9f0; border-color: #e0a060; }
+.rc-insight.danger { background: #fef5f5; border-color: #c06050; }
+.rc-insight strong { display: block; margin-bottom: 4px; }
+.rc-insight strong:only-child,
+.rc-insight p strong { display: inline; margin-bottom: 0; }
+
+.rc-section-title { font-family: var(--font-heading); font-size: 15px; color: var(--accent-rose); margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--accent-rose-light); letter-spacing: 0.5px; }
+.rc-section-title.gold { color: var(--accent-gold); border-color: #e0d0a0; }
+.rc-section-title.sage { color: var(--accent-sage); border-color: #c0d0b8; }
+/* LLM 可能产出 <strong> 在标题内——降级 */
+.rc-section-title strong { font-weight: inherit; color: inherit; }
+
+.rc-swot-wrap { margin: 18px 0; }
+.rc-swot-title { font-family: var(--font-heading); font-size: 14px; color: var(--text-primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.rc-swot-title .brand-tag { font-size: 10px; padding: 3px 12px; border-radius: 12px; font-weight: 600; letter-spacing: 0.5px; }
+.rc-swot-title .brand-tag.a { background: var(--accent-cream); color: var(--accent-rose); }
+.rc-swot-title .brand-tag.b { background: #faf5e8; color: var(--accent-gold); }
+.rc-swot { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* LLM 可能用 rc-swot-grid — 兜底 */
+.rc-swot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rc-swot-cell { background: var(--bg-card); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); border: 1px solid var(--border-light); min-width: 0; transition: box-shadow 0.2s; }
+.rc-swot-cell:hover { box-shadow: var(--shadow-md); }
+.rc-swot-cell .cell-head { padding: 10px 14px; display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: white; white-space: nowrap; overflow: hidden; }
+.rc-swot-cell .cell-head .icon { font-size: 16px; flex-shrink: 0; }
+.rc-swot-cell.s .cell-head { background: linear-gradient(135deg, #8b9d83, #a3b89a); }
+.rc-swot-cell.w .cell-head { background: linear-gradient(135deg, #d4a853, #e0c080); }
+.rc-swot-cell.o .cell-head { background: linear-gradient(135deg, #6b8fb8, #8aadd4); }
+.rc-swot-cell.t .cell-head { background: linear-gradient(135deg, #c08070, #d4a090); }
+.rc-swot-cell .cell-body { padding: 10px 14px 12px; }
+.rc-swot-cell .cell-body li { font-size: 12px; line-height: 1.7; color: var(--text-secondary); margin: 2px 0; padding-left: 2px; list-style: none; }
+.rc-swot-cell .cell-body li::before { content: '• '; color: var(--text-light); }
+.rc-swot-cell.s .cell-body { border-left: 3px solid #8b9d83; }
+.rc-swot-cell.w .cell-body { border-left: 3px solid #d4a853; }
+.rc-swot-cell.o .cell-body { border-left: 3px solid #6b8fb8; }
+.rc-swot-cell.t .cell-body { border-left: 3px solid #c08070; }
+
+.rc-swot-wrap.brand-b .rc-swot-cell.s .cell-head { background: linear-gradient(135deg, #a89060, #c4ad80); }
+.rc-swot-wrap.brand-b .rc-swot-cell.w .cell-head { background: linear-gradient(135deg, #c8956c, #d4a888); }
+.rc-swot-wrap.brand-b .rc-swot-cell.o .cell-head { background: linear-gradient(135deg, #b8944e, #ccaa66); }
+.rc-swot-wrap.brand-b .rc-swot-cell.t .cell-head { background: linear-gradient(135deg, #b87060, #cc8a78); }
+.rc-swot-wrap.brand-b .rc-swot-cell.s .cell-body { border-left-color: #a89060; }
+.rc-swot-wrap.brand-b .rc-swot-cell.w .cell-body { border-left-color: #c8956c; }
+.rc-swot-wrap.brand-b .rc-swot-cell.o .cell-body { border-left-color: #b8944e; }
+.rc-swot-wrap.brand-b .rc-swot-cell.t .cell-body { border-left-color: #b87060; }
+
+.rc-score-ring { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 50%; border: 3px solid var(--accent-rose); font-size: 20px; font-weight: 700; color: var(--accent-rose); margin: 0 6px; }
+.rc-score-ring.high { border-color: var(--accent-sage); color: var(--accent-sage); }
+.rc-score-ring.mid { border-color: var(--accent-gold); color: var(--accent-gold); }
+
+.rc-footer-note { margin-top: 20px; padding: 8px 12px; background: var(--bg-secondary); border-radius: var(--radius-sm); font-size: 10px; color: var(--text-light); text-align: center; }
+
+.btn-download-pdf { display: block; margin: 20px auto 0; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border-light); background: transparent; color: var(--text-light); cursor: pointer; font-size: 11px; transition: all 0.2s; }
+.btn-download-pdf:hover { color: var(--accent-rose); border-color: var(--accent-rose-light); }
+
+@media (max-width: 750px) {
+  .rc-swot { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .rc-compare { flex-direction: column; }
+  .rc-brand-card { min-width: 100%; }
+  .rc-metric { flex: 1 1 100%; max-width: none; }
+}
+@media (max-width: 600px) {
+  .rc-metrics { gap: 6px; }
+  .rc-metric { min-width: 80px; padding: 8px 10px; }
+  .rc-metric .val { font-size: 16px; }
+  .rc-bar-label { width: 60px; font-size: 11px; }
+  .rc-bar-row { gap: 6px; }
+}
+
+.chat-input-area { padding: 14px 28px 20px; background: var(--bg-primary); }
+.input-wrapper { display: flex; gap: 10px; align-items: flex-end; background: var(--bg-card); border: 1.5px solid var(--border-light); border-radius: var(--radius-lg); padding: 8px 8px 8px 18px; transition: var(--transition); }
+.input-wrapper:focus-within { border-color: var(--accent-rose-light); box-shadow: 0 0 0 3px rgba(200,149,108,0.1); }
+.input-wrapper textarea { flex: 1; border: none; outline: none; resize: none; font-size: 14px; font-family: var(--font-body); color: var(--text-primary); background: transparent; padding: 8px 0; max-height: 120px; line-height: 1.6; }
+.btn-send { width: 42px; height: 42px; border-radius: 50%; border: none; background: var(--accent-rose); color: white; cursor: pointer; font-size: 18px; transition: var(--transition); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.btn-send:hover { background: var(--accent-gold); transform: scale(1.05); }
+.btn-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.quick-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.quick-btn { padding: 5px 12px; border-radius: 18px; border: 1px solid var(--border-medium); background: var(--bg-card); color: var(--text-secondary); font-size: 11px; cursor: pointer; transition: var(--transition); white-space: nowrap; }
+.quick-btn:hover { border-color: var(--accent-rose); color: var(--accent-rose); background: var(--accent-cream); }
+
+.console-panel { flex: 2; background: var(--bg-dark); border-left: 1px solid #333; display: flex; flex-direction: column; min-width: 320px; transition: flex 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease, border-width 0.35s ease; }
+.console-panel.collapsed { flex: 0; min-width: 0; overflow: hidden; opacity: 0; border-left-width: 0; }
+.console-panel.collapsed > * { display: none; }
+
+.btn-toggle-console { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border-light); background: transparent; color: var(--text-light); cursor: pointer; font-size: 13px; transition: all 0.2s; flex-shrink: 0; margin-left: 4px; }
+.btn-toggle-console:hover { background: var(--bg-secondary); color: var(--text-secondary); }
+.console-header { padding: 12px 18px; border-bottom: 1px solid #333; display: flex; align-items: center; justify-content: space-between; }
+.console-title { font-family: var(--font-mono); font-size: 11px; color: #888; letter-spacing: 2px; }
+.console-tabs { display: flex; gap: 2px; }
+.console-tab { padding: 3px 10px; border-radius: 3px; font-size: 10px; font-family: var(--font-mono); cursor: pointer; color: #666; background: transparent; border: none; }
+.console-tab:hover { color: #aaa; }
+.console-tab.active { background: #333; color: #e0c8a0; }
+.console-output { flex: 1; overflow-y: auto; padding: 14px 18px; font-family: var(--font-mono); font-size: 11px; line-height: 1.9; color: #aaa; }
+.console-line { margin: 1px 0; display: flex; gap: 6px; align-items: flex-start; }
+.console-line .ts { color: #555; min-width: 70px; flex-shrink: 0; font-size: 10px; }
+.console-line .tag { padding: 0 5px; border-radius: 2px; font-size: 9px; font-weight: 600; flex-shrink: 0; line-height: 1.6; text-transform: uppercase; }
+.tag-intent { background: #3a2a4a; color: #c4a0e0; }
+.tag-precheck { background: #2a3a4a; color: #80b0e0; }
+.tag-decompose { background: #3a4a2a; color: #a0d080; }
+.tag-dag { background: #4a3a2a; color: #e0c080; }
+.tag-execute, .tag-tool { background: #4a2a3a; color: #e080a0; }
+.tag-state { background: #2a4a4a; color: #80d0d0; }
+.tag-memory { background: #4a4a2a; color: #d0d080; }
+.tag-reflect { background: #4a2a2a; color: #e0a080; }
+.tag-model { background: #2a2a4a; color: #8080ff; }
+.tag-success { background: #2a5a2a; color: #80ff80; }
+.tag-error { background: #5a2020; color: #ff8080; }
+.tag-info { background: #333; color: #aaa; }
+.console-line .text { color: #ccc; }
+.console-section { border: 1px solid #333; border-radius: 5px; padding: 8px 12px; margin: 6px 0; background: #1e1e1e; }
+.console-section .s-title { font-size: 10px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+.console-json { color: #c0a060; font-size: 10px; white-space: pre-wrap; margin: 2px 0; padding-left: 10px; border-left: 1px solid #444; }
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--border-medium); }
+
+@media (max-width: 1100px) { .console-panel { display: none; } }
+</style>
+</head>
+<body style="display:block;overflow:auto;padding:20px;max-width:900px;margin:0 auto">
+<h2>竞品对标 — 渲染验证</h2>
+<p style="color:#888;font-size:12px;margin-bottom:16px">原始报告已嵌入。点击按钮应用 fixReportLayout 查看修复效果。</p>
+<div id="msg" class="msg-bubble" style="max-width:100%"><hr style="border:none;border-top:1px dashed #ddd;margin:12px 0">
+1. 品牌概览 — rc-compare
+
+<div class="rc-compare">
+  <div class="rc-brand-card brand-a">
+    <div class="brand-header">太平鸟</div>
+    <div class="brand-body">
+      <div class="row"><span class="k">定位</span><span class="v">年轻潮流、都市时尚</span></div>
+      <div class="row"><span class="k">核心价格带</span><span class="v">¥200-600</span></div>
+      <div class="row"><span class="k">设计风格</span><span class="v">简约、通勤、轻复古、强调廓形感</span></div>
+      <div class="row"><span class="k">主要渠道</span><span class="v">天猫旗舰店、线下百货、抖音电商</span></div>
+    </div>
+  </div>
+  <div class="rc-brand-card brand-b">
+    <div class="brand-header">伊芙丽</div>
+    <div class="brand-body">
+      <div class="row"><span class="k">定位</span><span class="v">法式优雅、精致通勤</span></div>
+      <div class="row"><span class="k">核心价格带</span><span class="v">¥300-800</span></div>
+      <div class="row"><span class="k">设计风格</span><span class="v">浪漫、柔美、荷叶边/飘带元素、强调腰线</span></div>
+      <div class="row"><span class="k">主要渠道</span><span class="v">天猫旗舰店、线下专柜、小红书种草</span></div>
+    </div>
+  </div>
+</div>
+
+2. 核心指标 — rc-metrics
+
+<div class="rc-metrics">
+  <div class="rc-metric-card">
+    <div class="metric-value">¥150-500</div>
+    <div class="metric-label">市场主力价格带</div>
+    <div class="metric-source">来源：博查，LLM分析</div>
+  </div>
+  <div class="rc-metric-card">
+    <div class="metric-value">太平鸟</div>
+    <div class="metric-label">定价策略更激进</div>
+    <div class="metric-source">来源：博查，LLM分析；聚焦中价位区间</div>
+  </div>
+  <div class="rc-metric-card">
+    <div class="metric-value">伊芙丽</div>
+    <div class="metric-label">定价策略更稳健</div>
+    <div class="metric-source">来源：博查，LLM分析；覆盖中高价位</div>
+  </div>
+</div>
+
+3. 价格带对比 — rc-bar-chart
+
+<div class="rc-bar-chart">
+  <div class="chart-title">2026夏季连衣裙价格带分布对比</div>
+  <div class="chart-container">
+    <div class="bar-group">
+      <div class="bar-label">¥50-150 (低价位)</div>
+      <div class="bars">
+        <div class="bar bar-a" style="width: 15%;">太平鸟 15%</div>
+        <div class="bar bar-b" style="width: 5%;">伊芙丽 5%</div>
+      </div>
+    </div>
+    <div class="bar-group">
+      <div class="bar-label">¥150-500 (中价位)</div>
+      <div class="bars">
+        <div class="bar bar-a" style="width: 60%;">太平鸟 60%</div>
+        <div class="bar bar-b" style="width: 45%;">伊芙丽 45%</div>
+      </div>
+    </div>
+    <div class="bar-group">
+      <div class="bar-label">¥500-1500 (高价位)</div>
+      <div class="bars">
+        <div class="bar bar-a" style="width: 25%;">太平鸟 25%</div>
+        <div class="bar bar-b" style="width: 50%;">伊芙丽 50%</div>
+      </div>
+    </div>
+  </div>
+  <div class="chart-note">数据基于LLM对品牌天猫店铺2026夏季连衣裙价格带分布的分析，置信度：中。</div>
+</div>
+
+4. 多维度对比 — rc-table
+
+| 维度 | 太平鸟 | 伊芙丽 |
+| :--- | :--- | :--- |
+| <strong>核心价格带</strong> | ¥200-600 | ¥300-800 |
+| <strong>主力面料</strong> | 棉、涤纶、锦纶、天丝（混纺） | 桑蚕丝、醋酸、粘胶纤维、纯棉 |
+| <strong>面料策略</strong> | 注重功能性与性价比，如易打理、抗皱。<strong>来源：博查</strong> | 强调材质质感与舒适度，如真丝、醋酸等天然或高端再生纤维。<strong>来源：博查</strong> |
+| <strong>设计风格</strong> | 简约通勤、轻复古、解构主义。强调线条感和廓形，色彩偏中性及亮色点缀。 | 法式优雅、浪漫田园。强调收腰设计，多使用荷叶边、蕾丝、飘带等女性化元素。 |
+| <strong>爆款品类</strong> | 衬衫裙、西装裙、A字半身裙 | 茶歇裙、碎花连衣裙、法式桔梗裙 |
+| <strong>营销重点</strong> | “百变风格”、“都市新女性”、“明星同款” | “法式优雅”、“质感生活”、“KOL/KOC测评” |
+
+5. SWOT矩阵
+
+<div class="rc-swot-wrap brand-a">
+  <div class="rc-swot-title"><span class="brand-tag a">太平鸟</span> SWOT</div>
+  <div class="rc-swot">
+    <div class="rc-swot-cell s">
+      <div class="cell-head">💪 优势 S</div>
+      <div class="cell-body">
+        <ul>
+          <li>品牌知名度高，年轻化形象突出，与Z世代沟通能力强。</li>
+          <li>价格带覆盖主力消费区间（¥150-500），性价比高，<strong>来源：LLM分析</strong>。</li>
+          <li>供应链反应快，上新频率高，能快速跟进时尚趋势。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rc-swot-cell w">
+      <div class="cell-head">⚠️ 劣势 W</div>
+      <div class="cell-body">
+        <ul>
+          <li>面料策略偏重性价比，在高端面料（如真丝、醋酸）领域布局较弱，难以支撑高溢价。</li>
+          <li>设计风格多元化但缺乏极致标签，在“法式”、“极简”等细分赛道辨识度不及专业品牌。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rc-swot-cell o">
+      <div class="cell-head">🚀 机会 O</div>
+      <div class="cell-body">
+        <ul>
+          <li>市场主力价格带（¥150-500）竞争适中，利润空间较好，可在此区间打造更多爆款，<strong>来源：LLM分析</strong>。</li>
+          <li>可开发“高端面料基础款”副线，提升品牌调性与客单价，切入¥500-800价格带。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rc-swot-cell t">
+      <div class="cell-head">⚡ 威胁 T</div>
+      <div class="cell-body">
+        <ul>
+          <li>伊芙丽等品牌在中高端市场地位稳固，对追求质感的消费者有更强吸引力。</li>
+          <li>快时尚品牌（如ZARA、UR）在相似价格带竞争激烈，设计更新更快。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="rc-swot-wrap brand-b">
+  <div class="rc-swot-title"><span class="brand-tag b">伊芙丽</span> SWOT</div>
+  <div class="rc-swot">
+    <div class="rc-swot-cell s">
+      <div class="cell-head">💪 优势 S</div>
+      <div class="cell-body">
+        <ul>
+          <li>品牌调性明确，法式优雅风格深入人心，拥有高粘性粉丝群体。</li>
+          <li>面料策略成功，以真丝、醋酸等高品质面料建立高端形象，客单价高，<strong>来源：博查</strong>。</li>
+          <li>在连衣裙品类设计上，善于运用女性化元素，爆款率高。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rc-swot-cell w">
+      <div class="cell-head">⚠️ 劣势 W</div>
+      <div class="cell-body">
+        <ul>
+          <li>核心价格带（¥300-800）高于市场主力区间，可能错失部分价格敏感型客户。</li>
+          <li>风格相对固定，对于追求多元化、街头潮流风格的年轻消费者吸引力不足。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rc-swot-cell o">
+      <div class="cell-head">🚀 机会 O</div>
+      <div class="cell-body">
+        <ul>
+          <li>可通过推出“轻奢入门”系列（如定价¥399-599），使用轻奢感面料（如三醋酸），吸引太平鸟的高端用户。</li>
+          <li>强化小红书、抖音等平台的KOL种草，将“法式优雅”与“夏日连衣裙”强关联，占领用户心智。</li>
+        </ul>
+      </div>
+    </div>
+    <div class="rc-swot-cell t">
+      <div class="cell-head">⚡ 威胁 T</div>
+      <div class="cell-body">
+        <ul>
+          <li>太平鸟若提升面料品质，将在中高端市场形成直接竞争。</li>
+          <li>小众设计师品牌及高端定制店在法式风格赛道分流，对价格不敏感的用户忠诚度更高。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+6. 差异化机会 — rc-insight.tip
+
+<div class="rc-insight tip">
+  <div class="insight-title">💡 差异化机会：抢占“轻奢质感”与“高性价比”之间的空白地带</div>
+  <div class="insight-body">
+    <p><strong>市场空白点：</strong>太平鸟（¥200-600）与伊芙丽（¥300-800）之间存在一个“质感升级”的交叉价格带（¥400-600）。在此区间，消费者既追求优于太平鸟的面料质感，又希望价格低于伊芙丽的高端线。</p>
+    <p><strong>具体建议：</strong></p>
+    <ol>
+      <li><strong>产品策略：</strong>针对2026年夏季，推出“轻奢棉麻”或“高支数天丝”系列连衣裙。面料选择上，采用“60支以上长绒棉”或“兰精天丝”，并强调“凉感”、“透气”、“免烫”等功能性卖点。</li>
+      <li><strong>价格策略：</strong>将核心引流款定价为 <strong>¥299</strong>（对标太平鸟中价位），利润款定价为 <strong>¥459</strong>（填补市场空白），形象款定价为 <strong>¥699</strong>（对标伊芙丽入门款）。</li>
+      <li><strong>时间窗口：</strong>在 <strong>2026年3月初</strong> 完成打样，<strong>4月中旬</strong> 启动预售，<strong>5月1日前</strong> 完成全部上架，抢占夏季第一波流量。</li>
+      <li><strong>预期效果：</strong>通过“优于太平鸟的质感，低于伊芙丽的价格”定位，预计可转化两个品牌各10-15%的摇摆用户，实现该价格带连衣裙品类GMV环比增长25%以上。</li>
+    </ol>
+    <p><strong>数据支撑：</strong>LLM分析指出“中价位（¥150-500）竞争适中且利润空间较好”；同时，伊芙丽的高价位策略（¥500-1500）也证明了消费者对高品质面料的付费意愿。<strong>来源：博查，LLM分析</strong>。</p>
+  </div>
+</div>
+<div style="margin-top:12px;padding:10px 14px;background:#fef5f5;border-left:3px solid #c06050;border-radius:6px;font-size:12px"><strong>⚠️ 质量未达标</strong>：经2次自动重试，最佳评分6.0/10（v1），未达到7/10的目标。主要瓶颈：<strong>数据一致性</strong>（当前5/10）。原因：当前数据源为网页搜索（博查+Tavily），非结构化电商数据API，无法获取精确的价格分布/销量/评价数据。接入速API等结构化电商数据源后可显著改善。</div>
+<div style="margin-top:20px;padding:14px 18px;background:#fef9f0;border-left:3px solid #e0a060;border-radius:6px;font-size:13px">
+  <h4 style="margin:0 0 8px;color:#b07030">📋 质量审查</h4>
+  <p style="margin:4px 0;color:#2a7a4a;font-weight:500">🔄 本报告已根据反思结果自动重试优化（4096 tokens），以下为修正后评分</p>
+  <p style="margin:4px 0"><strong>综合评分:</strong> 6.0/10 — 报告结构完整但数据一致性差、来源模糊，未能充分满足竞品对标分析对定量证据和季节性深度的要求，需补充可靠数据并修正矛盾。</p>
+  <p style="margin:4px 0"><strong>数据一致性:</strong> 5/10 | <strong>目标对齐:</strong> 7/10 | <strong>可落地性:</strong> 6/10</p>
+  <p style="margin:4px 0;color:#c06030;font-size:12px">⚠️ 以上分析存在质量风险，建议结合人工判断使用。</p>
+</div>
+<div style="margin-top:20px;padding:12px 16px;background:#f8faf8;border-left:3px solid #8b9d83;border-radius:6px;font-size:12px;color:#6b7d63">
+  <strong>💡 质量提示</strong> (评分: 6.0/10)<br>
+  · SWOT矩阵内容未完全呈现，存在截断，影响完整性。<br>· 报告未说明数据采样方法或样本量，LLM分析结论的可信度存疑。
+</div></div>
+<button onclick="fix()" style="display:block;margin:16px auto;padding:10px 24px;cursor:pointer;background:var(--accent-rose);color:white;border:none;border-radius:8px;font-size:14px">应用 fixReportLayout 修复</button>
+<script>
+function fixReportLayout(bubbleEl) {
+  // ── 0. 清理 Markdown 残留（前端兜底） ──
+  var raw = bubbleEl.innerHTML;
+  // 移除 markdown 标题 (### Title)
+  raw = raw.replace(/^#{1,6}\s+.+$/gm, function(m) { return '<div class="rc-section-title">' + m.replace(/^#+\s+/, '') + '</div>'; });
+  // 转换 markdown 粗体 **text**
+  raw = raw.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // 转换 markdown 分隔线 ---
+  raw = raw.replace(/^\s*---\s*$/gm, '<hr style="border:none;border-top:1px dashed #ddd;margin:8px 0">');
+  bubbleEl.innerHTML = raw;
+
+  // ── 0.5. 修复 LLM 自创类名 → 标准类名（文本替换，DOM处理前） ──
+  var fixed = bubbleEl.innerHTML;
+  // rc-metric-card → rc-metric
+  fixed = fixed.replace(/rc-metric-card/g, 'rc-metric');
+  // metric-value → val
+  fixed = fixed.replace(/class="metric-value"/g, 'class="val"');
+  fixed = fixed.replace(/class='metric-value'/g, "class='val'");
+  // metric-label → lbl
+  fixed = fixed.replace(/class="metric-label"/g, 'class="lbl"');
+  fixed = fixed.replace(/class='metric-label'/g, "class='lbl'");
+  // rc-swot-item → rc-swot-cell
+  fixed = fixed.replace(/rc-swot-item/g, 'rc-swot-cell');
+  // rc-swot-grid → rc-swot
+  fixed = fixed.replace(/rc-swot-grid/g, 'rc-swot');
+  // LLM 自创的 bar chart 类名 → 标准
+  fixed = fixed.replace(/chart-bars/g, 'rc-bar-chart');
+  fixed = fixed.replace(/bar-group/g, 'rc-bar-row');
+  fixed = fixed.replace(/"bar-label"/g, '"rc-bar-label"');
+  fixed = fixed.replace(/'bar-label'/g, "'rc-bar-label'");
+  fixed = fixed.replace(/"bar bar-a"/g, '"rc-bar-fill c1"');
+  fixed = fixed.replace(/"bar bar-b"/g, '"rc-bar-fill c2"');
+  fixed = fixed.replace(/'bar bar-a'/g, "'rc-bar-fill c1'");
+  fixed = fixed.replace(/'bar bar-b'/g, "'rc-bar-fill c2'");
+  fixed = fixed.replace(/class="bar "/g, 'class="rc-bar-fill "');
+  // chart-title → 移除或转 rc-section-title
+  fixed = fixed.replace(/<div class="chart-title">([^<]*)<\/div>/g, '<div class="rc-section-title">$1</div>');
+  // chart-container → 去除包裹层
+  fixed = fixed.replace(/<div class="chart-container">/g, '');
+  fixed = fixed.replace(/<\/div>\s*<\/div>\s*<\/div>\s*(?=<div class="bar-group|<\/div>\s*$)/g, '</div></div>');
+  // bars → rc-bar-track
+  fixed = fixed.replace(/"bars"/g, '"rc-bar-track"');
+  fixed = fixed.replace(/'bars'/g, "'rc-bar-track'");
+  // bar-label → rc-bar-label (also handle div format)
+  fixed = fixed.replace(/class="bar-label"/g, 'class="rc-bar-label"');
+  fixed = fixed.replace(/class='bar-label'/g, "class='rc-bar-label'");
+  // bar bar-a / bar bar-b → rc-bar-fill c1/c2 (robust whitespace)
+  fixed = fixed.replace(/"bar\s+bar-a"/g, '"rc-bar-fill c1"');
+  fixed = fixed.replace(/"bar\s+bar-b"/g, '"rc-bar-fill c2"');
+  fixed = fixed.replace(/'bar\s+bar-a'/g, "'rc-bar-fill c1'");
+  fixed = fixed.replace(/'bar\s+bar-b'/g, "'rc-bar-fill c2'");
+  // Remove stock markdown junk: "3. 价格带对比 — rc-bar-chart" type lines
+  fixed = fixed.replace(/\d+\.\s+\S+.*rc-bar-chart\s*/g, '');
+  // bar-group → rc-bar-row (redundant but safe to repeat)
+  fixed = fixed.replace(/bar-group/g, 'rc-bar-row');
+  bubbleEl.innerHTML = fixed;
+
+  // ── 0.6. 拆分双品牌柱状图：每个品牌独立一行 ──
+  var allRows = bubbleEl.querySelectorAll('.rc-bar-row');
+  allRows.forEach(function(row) {
+    var fills = row.querySelectorAll('.rc-bar-fill');
+    if (fills.length < 2) return;  // 单品牌不需要拆分
+    var label = row.querySelector('.rc-bar-label');
+    var track = row.querySelector('.rc-bar-track');
+    var priceBand = label ? label.textContent.trim() : '';
+    if (!track) return;
+    
+    fills.forEach(function(fill) {
+      var brandMatch = fill.textContent.match(/^(太平鸟|伊芙丽|欧时力|Five Plus|VERO MODA|ONLY|ZARA|H&M|优衣库|UR|MO&CO|地素|江南布衣|玛丝菲尔|歌力思|影儿|朗姿)/);
+      var brandName = brandMatch ? brandMatch[1] : '';
+      var pct = (fill.style.width || '').replace('%','').replace(';','');
+      var newRow = document.createElement('div');
+      newRow.className = 'rc-bar-row';
+      var newLabel = document.createElement('span');
+      newLabel.className = 'rc-bar-label';
+      newLabel.textContent = brandName || priceBand;
+      var newTrack = document.createElement('div');
+      newTrack.className = 'rc-bar-track';
+      var newFill = document.createElement('div');
+      newFill.className = fill.className;
+      newFill.style.width = pct + '%';
+      newFill.textContent = pct + '%';
+      newTrack.appendChild(newFill);
+      newRow.appendChild(newLabel);
+      newRow.appendChild(newTrack);
+      row.parentNode.insertBefore(newRow, row);
+    });
+    row.parentNode.removeChild(row);  // 删除原始的合并行
+  });
+
+  // ── 1. 修复 LLM 自创的 rc-swot-grid/rc-swot-item → 标准 rc-swot 结构 ──
+  var grids = bubbleEl.querySelectorAll('.rc-swot-grid, [class*="swot-grid"]');
+  grids.forEach(function(grid) {
+    // 替换 class 名
+    grid.className = grid.className.replace(/rc-swot-grid|swot-grid/g, 'rc-swot');
+    // 替换每个 item
+    var items = grid.querySelectorAll('.rc-swot-item, [class*="swot-item"]');
+    items.forEach(function(item) {
+      var cls = item.className;
+      var cellType = 's';  // default
+      if (cls.indexOf('strength') >= 0 || cls.indexOf('s') >= 0) cellType = 's';
+      else if (cls.indexOf('weakness') >= 0 || cls.indexOf('w') >= 0) cellType = 'w';
+      else if (cls.indexOf('opportunity') >= 0 || cls.indexOf('o') >= 0) cellType = 'o';
+      else if (cls.indexOf('threat') >= 0 || cls.indexOf('t') >= 0) cellType = 't';
+      
+      item.className = 'rc-swot-cell ' + cellType;
+      // 提取 label 和内容
+      var label = item.querySelector('.swot-label, strong, b');
+      var labelText = label ? label.textContent.trim() : '';
+      if (label) label.remove();
+      var bodyText = item.textContent.trim();
+      
+      var icons = {s:'💪', w:'⚠️', o:'🚀', t:'⚡'};
+      var head = document.createElement('div'); head.className = 'cell-head';
+      head.innerHTML = (icons[cellType]||'') + ' ' + (labelText || cellType.toUpperCase());
+      var body = document.createElement('div'); body.className = 'cell-body';
+      body.innerHTML = '<ul><li>' + bodyText + '</li></ul>';
+      
+      item.innerHTML = '';
+      item.appendChild(head);
+      item.appendChild(body);
+    });
+    
+    // 确保网格有 proper rc-swot-wrap 父级
+    var wrap = grid.closest('.rc-swot-wrap');
+    if (!wrap) {
+      var parent = grid.parentElement;
+      if (parent && parent !== bubbleEl) {
+        parent.className = parent.className + ' rc-swot-wrap';
+      }
+    }
+  });
+
+  // ── 2. 修复 LLM 内联 style 覆盖问题：清除冲突样式 ──
+  var allSwot = bubbleEl.querySelectorAll('.rc-swot-wrap');
+  allSwot.forEach(function(w) {
+    w.style.removeProperty('display');
+    w.style.removeProperty('flex');
+    w.style.removeProperty('background');
+    w.style.removeProperty('border-radius');
+    w.style.removeProperty('padding');
+    w.style.removeProperty('box-shadow');
+    w.style.removeProperty('min-width');
+  });
+
+  // ── 3. 包裹 rc-table ──
+  var tables = bubbleEl.querySelectorAll('.rc-table');
+  tables.forEach(function(tbl) {
+    if (!tbl.parentElement.classList.contains('rc-table-wrap')) {
+      var wrap = document.createElement('div');
+      wrap.className = 'rc-table-wrap';
+      tbl.parentNode.insertBefore(wrap, tbl);
+      wrap.appendChild(tbl);
+    }
+  });
+
+  // ── 4. 包裹裸 <table>（没有 rc-table 包裹的） ──
+  var bareTables = bubbleEl.querySelectorAll('table:not(.rc-table table)');
+  bareTables.forEach(function(tbl) {
+    if (!tbl.closest('.rc-table') && !tbl.closest('.rc-table-wrap')) {
+      tbl.className = (tbl.className || '') + ' rc-table-fallback';
+      var wrap = document.createElement('div');
+      wrap.className = 'rc-table-wrap';
+      tbl.parentNode.insertBefore(wrap, tbl);
+      wrap.appendChild(tbl);
+    }
+  });
+
+  // ── 5. 修复 rc-insight 缺失 strong 标签 ──
+  var insights = bubbleEl.querySelectorAll('.rc-insight');
+  insights.forEach(function(ins) {
+    if (!ins.querySelector('strong')) {
+      var firstText = ins.childNodes[0];
+      if (firstText && firstText.nodeType === 3 && firstText.textContent.trim()) {
+        var s = document.createElement('strong');
+        s.textContent = firstText.textContent.trim().substring(0, 80);
+        firstText.replaceWith(s);
+      }
+    }
+  });
+
+  // ── 6. 图片 ──
+  var imgs = bubbleEl.querySelectorAll('img');
+  imgs.forEach(function(img) {
+    img.style.maxWidth = '100%';
+    img.style.height = 'auto';
+  });
+
+  // ── 7. 清理多余 <br> ──
+  var brs = bubbleEl.querySelectorAll('br + br + br');
+  brs.forEach(function(br) { br.remove(); });
+}
+
+
+window.onload = function() { fixReportLayout(document.getElementById("msg")); document.querySelector("button").textContent = "✅ 已自动修复"; };
+var fixed = false;
+function fix() {
+  if (fixed) return;
+  fixReportLayout(document.getElementById("msg"));
+  fixed = true;
+  document.querySelector("button").textContent = "✅ 已修复";
+}
+</script>
+</body></html>
