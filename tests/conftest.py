@@ -8,11 +8,11 @@ from pathlib import Path
 # 添加 backend 到 path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
-# 强制使用测试 key（防止 config.py 加载 .env 时覆盖）
-os.environ["DEEPSEEK_API_KEY"] = "test-key"
-os.environ["ARK_API_KEY"] = "test-key"
-os.environ["TAVILY_API_KEY"] = "test-key"
-os.environ["BOCHA_API_KEY"] = "test-key"
+# 确保单元测试不依赖真实 API Key
+os.environ.setdefault("DEEPSEEK_API_KEY", "test-key")
+os.environ.setdefault("ARK_API_KEY", "test-key")
+os.environ.setdefault("TAVILY_API_KEY", "test-key")
+os.environ.setdefault("BOCHA_API_KEY", "test-key")
 
 
 @pytest.fixture

@@ -20,9 +20,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 import pytest
 
-# 集成测试必须有真实 API Key，否则全部跳过
-if not os.environ.get("DEEPSEEK_API_KEY") or os.environ["DEEPSEEK_API_KEY"] in ("", "test-key"):
-    pytest.skip("跳过集成测试（需要设置真实的 DEEPSEEK_API_KEY）", allow_module_level=True)
+# 集成测试必须有 USE_REAL_API=1 环境变量
+# 有真实 API Key 时: USE_REAL_API=1 pytest -m integration
+# 防止通过 .env 自动加载覆盖测试 key
+if not os.environ.get("USE_REAL_API"):
+    pytest.skip("集成测试默认跳过。设置 USE_REAL_API=1 执行", allow_module_level=True)
 
 
 # ================================================================
