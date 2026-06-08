@@ -164,9 +164,14 @@ FastAPI Server (backend/server.py)
 │       ├── registry.py    83行   ToolRegistry
 │       └── dag_loader.py  66行   DAG模板加载
 ├── frontend/
-│   └── index.html         1204行 SPA前端
+│   ├── index.html         398行 HTML骨架+全局state
+│   ├── style.css          247行 CSS设计系统
+│   ├── render.js           71行 报告渲染引擎(R.* + renderReport)
+│   ├── console.js          26行 Console日志(clog/clearConsole)
+│   ├── sse.js             145行 SSE流式+重试+sendMessage
+│   ├── handler.js         315行 SSE事件处理+layout修复
+│   └── tests/             2个测试 / 14 passed
 ├── tests/                 9个测试文件 / 93passed+2xfailed
-│   ├── conftest.py        mock OpenAI fixture
 │   ├── test_agent_engine.py  Pipeline流程
 │   ├── test_config.py
 │   ├── test_intent_registry.py
@@ -175,9 +180,6 @@ FastAPI Server (backend/server.py)
 │   ├── test_report_clean.py
 │   ├── test_server.py     API端点+SSE
 │   └── test_tools.py      LLM驱动工具
-├── frontend/tests/        2个测试 / 14 passed
-│   ├── setup.test.js
-│   └── render.test.js
 ├── .github/workflows/
 │   └── test.yml           CI自动运行pytest+ruff
 └── data/
