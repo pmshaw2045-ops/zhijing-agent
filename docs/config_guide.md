@@ -97,13 +97,34 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 搜索是数据源，**不配置也不会报错**——LLM 会基于自身知识生成分析，只是信息丰富度受影响。
 
+### 统一配置（推荐）
+
+```env
+SEARCH_API_KEY=your-s...n
+```
+
+所有搜索工具（`web_search` / `bocha_search`）共享这一个 key。系统自动检测可用的搜索服务。
+
+### Provider 选择
+
+```env
+SEARCH_PROVIDER=auto    # auto | tavily | bocha
+```
+
+- `auto`（默认）：根据可用 key 自动选择，英文搜索优先 Tavily，中文优先博查
+- `tavily`：强制使用 Tavily（全球 web 搜索，适合时尚趋势等国际化内容）
+- `bocha`：强制使用博查 AI（覆盖国内电商/新闻/百科，适合淘宝/抖音等）
+
+### 独立配置（二选一即可，与统一配置不冲突）
+
 | 变量 | 服务商 | 说明 |
 |------|--------|------|
-| `TAVILY_API_KEY` | Tavily（英文搜索） | 覆盖全球 web 搜索，适合时尚趋势等国际化内容 |
-| `BOCHA_API_KEY` | 博查 AI（中文搜索） | 覆盖国内电商/新闻/百科，适合淘宝/抖音等 |
+| `TAVILY_API_KEY` | Tavily（英文搜索） | 覆盖全球 web 搜索 |
+| `BOCHA_API_KEY` | 博查 AI（中文搜索） | 覆盖国内电商/新闻/百科 |
 
-> 织镜使用 Tavily + 博查双引擎覆盖中英文搜索场景。
-> 后续版本将支持配置化搜索引擎（`SEARCH_PROVIDER=tavily|bocha|serpapi|bing`）。
+### 向后兼容
+
+如果 `.env` 中已有 `TAVILY_API_KEY` / `BOCHA_API_KEY`，无需迁移。新 `SEARCH_API_KEY` 作为两者的兜底——如果没有配对应的独立 key，会用 `SEARCH_API_KEY` 代替。
 
 ---
 

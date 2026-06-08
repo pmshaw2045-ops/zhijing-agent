@@ -187,7 +187,7 @@ class TestMapTools:
             {"id": "T1", "tool": "bocha_search", "deps": [], "parallel_group": 0, "desc": ""},
         ]}
         result = eng._map_tools(dag)
-        assert "博查" in result["mappings"][0]["desc"]
+        assert "中文" in result["mappings"][0]["desc"]
         assert "T1" in result["mappings"][0]["desc"]
 
     def test_empty_tasks_list(self):

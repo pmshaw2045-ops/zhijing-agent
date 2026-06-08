@@ -99,7 +99,7 @@ class TestLlmExtract:
         result = _llm_extract("分析: {query}\n数据: {search_text}",
                               {"snippets": ["测试数据"]}, "茶歇裙", "trend_analyze")
         assert result.get("_llm_driven") is True
-        assert result.get("data_source") in ("tavily_search", "llm_knowledge")
+        assert result.get("data_source") in ("search_engine", "llm_knowledge")
 
     def test_extraction_with_empty_search_context(self, mock_sync_openai):
         """无搜索结果时，llm_knowledge 作为数据源"""

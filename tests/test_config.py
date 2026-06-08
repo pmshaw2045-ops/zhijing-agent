@@ -4,6 +4,7 @@ import pytest
 
 # 必须在 import config 前覆盖环境变量
 os.environ["DEEPSEEK_API_KEY"] = "test-key-ds"
+os.environ["LLM_API_KEY"] = ""  # 清空确保回退到 DEEPSEEK_API_KEY
 os.environ["ARK_API_KEY"] = "test-key-ark"
 os.environ["TAVILY_API_KEY"] = "test-key-tv"
 os.environ["BOCHA_API_KEY"] = "test-key-bc"
