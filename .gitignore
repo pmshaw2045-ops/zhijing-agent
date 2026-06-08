@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 .env
 data/memory_store.json
+data/report_cache.json
 *.egg-info/
 dist/
 build/
