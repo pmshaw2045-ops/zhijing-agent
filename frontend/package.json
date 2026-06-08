@@ -1,0 +1,22 @@
+{
+  "name": "zhijing-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "织镜 ZHÌJÌNG 前端 — 服饰电商 AI Agent",
+  "scripts": {
+    "test": "jest --config jest.config.js",
+    "test:watch": "jest --config jest.config.js --watch",
+    "test:coverage": "jest --config jest.config.js --coverage",
+    "lint": "eslint frontend/",
+    "lint:fix": "eslint frontend/ --fix",
+    "format": "prettier --write 'frontend/**/*.{js,css,html}'",
+    "format:check": "prettier --check 'frontend/**/*.{js,css,html}'"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "prettier": "^3.2.0"
+  }
+}

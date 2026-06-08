@@ -6,8 +6,10 @@ import logging
 
 try:
     from .llm_client import chat, extract_json, MODEL_CHAT
+    from .report_pipeline import TARGET_SCORE
 except ImportError:
     from llm_client import chat, extract_json, MODEL_CHAT
+    from report_pipeline import TARGET_SCORE
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,6 @@ class ReflectionEngine:
         scores = result.get("scores", {})
         dims = [scores.get(k, 5) for k in ("data_consistency", "goal_alignment", "actionability")]
         scores["overall"] = round(sum(dims) / len(dims), 1)
-        result["passed"] = scores["overall"] >= 6
+        result["passed"] = scores["overall"] >= TARGET_SCORE
         result["scores"] = scores
         return result

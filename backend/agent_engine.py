@@ -20,7 +20,9 @@ import json
 import re
 import asyncio
 import logging
+import time
 from typing import AsyncGenerator
+from pathlib import Path
 
 # Harness层
 try:
@@ -40,6 +42,7 @@ try:
     from .precheck import PrecheckEngine
     from .observability import get_metrics
     from .intent_registry import get_decompose_rule, get_all_names
+    from .decompose_engine import DecomposeEngine
 except ImportError:
     from harness.registry import get_registry
     from harness.dag_loader import get_dag_loader
@@ -57,8 +60,12 @@ except ImportError:
     from precheck import PrecheckEngine
     from observability import get_metrics
     from intent_registry import get_decompose_rule, get_all_names
+    from decompose_engine import DecomposeEngine
 
 logger = logging.getLogger(__name__)
+
+# 数据目录
+DATA_DIR = Path(__file__).parent.parent / "data"
 
 # 工具注册中心（从tools.py同步）
 
@@ -229,6 +236,8 @@ class AgentEngine:
         self.image_optimizer = ImageOptimizer()
         self.precheck = PrecheckEngine()
         self._pending_clarify = None
+        self._report_cache = self._load_cache()
+        self.decompose_engine = DecomposeEngine(self.dag_loader)
 
     async def run_pipeline(self, user_input: str, session_id: str, mode: str = "selection",
                            clarify_answer: str = None) -> AsyncGenerator[dict, None]:
@@ -284,6 +293,18 @@ class AgentEngine:
             yield {"type": "clarify", "message": clarify_msg, "gaps": gaps, "session_id": session_id}
             yield {"type": "done"}
             return
+
+        # ====== 缓存检查 (24h相同query命中) ======
+        cache_key = f"{user_input}|{mode or 'auto'}"
+        if cache_key in self._report_cache:
+            cached_time, cached_report = self._report_cache[cache_key]
+            if time.time() - cached_time < 86400:  # 24h内有效
+                yield {"type": "cache_hit", "data": {"cached": True, "age_hours": round((time.time()-cached_time)/3600, 1)}}
+                yield {"type": "result", "content": cached_report}
+                self.tracer.finish(trace_id, success=True)
+                yield {"type": "summary", "data": get_metrics()}
+                yield {"type": "done"}
+                return
 
         # ====== Phase 3: DAG拆解 (image 是生成任务无需拆解，其余意图全部 LLM 拆解) ======
         _FIXED_DAG_MODES = {"image"}
@@ -457,6 +478,10 @@ class AgentEngine:
             }}
 
         yield {"type": "result", "content": report}
+        # 写入缓存（24h，文件持久化）
+        if len(report) > 100:
+            self._report_cache[cache_key] = (time.time(), report)
+            self._save_cache()
         yield {"type": "summary", "data": get_metrics()}
         yield {"type": "done"}
 
@@ -660,8 +685,13 @@ class AgentEngine:
         mappings = []
         for t in dag.get("tasks", []):
             tool = t["tool"] if t["tool"] in tool_names else "web_search"
+            desc = t.get("desc", "")
+            if not desc:
+                # 为每个工具生成有意义的默认描述
+                label = next((at["description"] for at in AVAILABLE_TOOLS if at["name"] == tool), tool)
+                desc = f"{label} ({t['id']})"
             mappings.append({
-                "task_id": t["id"], "tool": tool, "desc": t.get("desc", ""),
+                "task_id": t["id"], "tool": tool, "desc": desc,
                 "deps": t.get("deps", []), "parallel_group": t.get("parallel_group", 0)
             })
         return {"mappings": mappings, "total": len(mappings)}
@@ -972,6 +1002,28 @@ class AgentEngine:
             return raw.strip() or user_prompt
         except Exception:
             return user_prompt
+
+
+    # ====== 报告缓存 ======
+
+    def _load_cache(self) -> dict:
+        """从文件加载报告缓存"""
+        try:
+            cf = DATA_DIR / "report_cache.json"
+            if cf.exists():
+                return json.loads(cf.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        return {}
+
+    def _save_cache(self):
+        """持久化报告缓存到文件"""
+        try:
+            import json
+            cf = DATA_DIR / "report_cache.json"
+            cf.write_text(json.dumps(self._report_cache, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass
 
 
 def _clean(text):

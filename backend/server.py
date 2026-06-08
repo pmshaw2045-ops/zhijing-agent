@@ -10,8 +10,8 @@ import uuid
 from pathlib import Path
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse, Response, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -41,9 +41,28 @@ async def lifespan(app: FastAPI):
     from .config import APP_ENV, IS_PROD
     logger.info(f"织镜 ZHÌJÌNG Agent 启动 (env={APP_ENV})")
     if IS_PROD:
-        logger.info("  ⚠️  PRODUCTION 模式：认证已启用")
+        logger.info(f"  ⚠️  PRODUCTION 模式：认证已启用")
     logger.info(f"  API: http://localhost:8899/api/chat")
     logger.info(f"  前端: http://localhost:8899/")
+
+    # === 启动自检 ===
+    try:
+        from .startup_diag import run_diagnostics, print_diagnostics
+        diag_results = run_diagnostics()
+        print_diagnostics(diag_results)
+        # 检查是否有严重问题
+        has_issues = any(
+            "error" in r or r.get("missing_params") or
+            (r.get("pyc_mtime") is not None and not r.get("fresh", True))
+            for r in diag_results
+        )
+        if has_issues:
+            logger.warning("⚠️ 启动自检发现问题。建议: find backend -name __pycache__ -exec rm -rf {} +")
+    except ImportError:
+        logger.info("  startup_diag 模块不可用，跳过自检")
+    except Exception as e:
+        logger.warning(f"  启动自检异常: {e}")
+
     diag = engine.memory.stats()
     logger.info(f"  会话: {diag.get('total_sessions', '?')} | 知识: {diag.get('knowledge_count', '?')}")
     yield
@@ -52,7 +71,7 @@ async def lifespan(app: FastAPI):
     engine.memory._save()
     logger.info("记忆已持久化，服务关闭")
 
-app = FastAPI(title="织镜 ZHÌJÌNG", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="织镜 ZHÌJÌNG", version="2.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.add_middleware(AuthMiddleware)
 
@@ -62,8 +81,22 @@ async def root():
     """前端页面"""
     index_path = FRONTEND_DIR / "index.html"
     if index_path.exists():
-        return HTMLResponse(index_path.read_text(encoding="utf-8"))
-    return HTMLResponse("<h1>前端文件未找到，请运行 build</h1>")
+        return HTMLResponse(index_path.read_text(encoding="utf-8"),
+                           headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/style.css")
+async def style():
+    return HTMLResponse((FRONTEND_DIR / "style.css").read_text(encoding="utf-8"),
+                        media_type="text/css",
+                        headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/app.js")
+async def app_js():
+    return HTMLResponse((FRONTEND_DIR / "app.js").read_text(encoding="utf-8"),
+                        media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache"})
 
 
 @app.post("/api/chat")
@@ -95,7 +128,7 @@ async def chat(request: Request):
                     cancelled = True
                     break
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0)
         except Exception as e:
             logger.error(f"Pipeline error: {e}", exc_info=True)
             finish_request(success=False, latency_ms=(time.time()-request_start)*1000)

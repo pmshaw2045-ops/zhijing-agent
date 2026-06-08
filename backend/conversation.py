@@ -1,6 +1,7 @@
 """ConversationManager — 多轮对话场景检测 + 查询增强"""
 import json
 import logging
+import re
 from enum import Enum, auto
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,18 @@ class Scenario(Enum):
 
 class ConversationManager:
     """多轮对话管理器"""
+
+    # 最大查询长度（超出截断）
+    MAX_QUERY_LENGTH = 2000
+
+    @staticmethod
+    def _sanitize(text: str) -> str:
+        """清洗用户输入：移除控制字符 + 截断超长输入"""
+        if not isinstance(text, str):
+            return str(text) if text is not None else ""
+        # 移除控制字符（保留 \n \r \t）
+        cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+        return cleaned[:ConversationManager.MAX_QUERY_LENGTH]
 
     # 场景关键词（大幅扩展覆盖）
     _FOLLOWUP_DEEPEN = [
@@ -41,6 +54,7 @@ class ConversationManager:
     def detect_scenario(self, query: str, last_intent: str = "",
                         working_memory: dict = None) -> Scenario:
         """检测当前查询的场景类型"""
+        query = self._sanitize(query)
         for kw in self._FOLLOWUP_COMPARE:
             if kw in query:
                 return Scenario.FOLLOWUP_COMPARE
