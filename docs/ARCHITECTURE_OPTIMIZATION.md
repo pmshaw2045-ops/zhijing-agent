@@ -1,9 +1,9 @@
 # 织镜 ZHÌJÌNG 架构优化方案
 
-> 原则：增量演进、功能不变、每步可回滚  
+> 原则：增量演进、功能不变、每步可回滚\
 > 策略：绞杀者模式（Strangler Fig）——新模块包围旧核心，逐步替换
 
----
+***
 
 ## 总体路线
 
@@ -17,15 +17,16 @@ Phase 1 (硬加固)     Phase 2 (提取核心)    Phase 3 (基础设施)    Phas
 每 Phase 独立上线，不影响正在运行的功能。
 
 > **当前状态(2026-06-08)**：
+>
 > - Phase 1-2 全部完成 ✅
 > - Phase 3 除 SQLite 外已完成（Dockerfile有但无docker-compose）
 > - Phase 4 仅配置分层完成，DI容器未实现
 
----
+***
 
 ## Phase 1：硬加固（不改架构，加保护层）
 
-**目标**：消除 P0 阻断项，不碰 agent_engine 核心逻辑。
+**目标**：消除 P0 阻断项，不碰 agent\_engine 核心逻辑。
 
 ### 1.1 API 认证（1h）
 
@@ -121,17 +122,18 @@ async def lifespan(app):
 
 > ✅ 全部通过（2026-06-06）
 
----
+***
 
 ## Phase 2：提取核心（拆 God Object）
 
-**目标**：agent_engine.py 从 963 行降到 ~400 行。每个提取的模块独立可测。
+**目标**：agent\_engine.py 从 963 行降到 \~400 行。每个提取的模块独立可测。
 
-**实际**：agent_engine.py 当前 616 行（未达 400 目标，但拆出了 7 个引擎 + 1 个共享函数）。
+**实际**：agent\_engine.py 当前 616 行（未达 400 目标，但拆出了 7 个引擎 + 1 个共享函数）。
 
 **核心策略**：提取而非重写。每个 Phase 2.x 独立可上线。
 
 **Phase 2 额外提取**（设计方案之外的增量）：
+
 - 🔄 `DecomposeEngine` → `backend/decompose_engine.py`（从 `_llm_decompose` / `_build_decompose_prompt` 提取）
 - 🔄 `goal_to_text()` → `backend/intent.py`（从 `decompose_engine._goal_to_text` 提升为共享函数）
 - 🔄 `conversation_manager` → `backend/conversation.py`（多轮对话提取）
@@ -145,6 +147,7 @@ async def lifespan(app):
 ```
 
 **转移内容**：
+
 - `_llm_intent` + `_build_intent_prompt`
 - `_fallback_intent`
 - `_normalize_intent`
@@ -152,12 +155,14 @@ async def lifespan(app):
 - `_build_memory_context`
 
 **新类**：`IntentRouter`
+
 ```python
 class IntentRouter:
     async def classify(self, user_input, mode, session_id, memory) -> IntentResult
 ```
 
-**agent_engine 调用变化**：
+**agent\_engine 调用变化**：
+
 ```python
 # 旧: intent = await self._llm_intent(user_input, mode, session_id)
 # 新: intent = await self.intent_router.classify(user_input, mode, session_id, self.memory)
@@ -173,12 +178,14 @@ class IntentRouter:
 ```
 
 **转移内容**：
+
 - `_llm_report` + `_build_report_prompt`
 - `_build_report_memory_context`
 - `REPORT_TEMPLATES`（移到 report.py 顶部）
 - `_clean`
 
 **新类**：`ReportBuilder`
+
 ```python
 class ReportBuilder:
     REPORT_TEMPLATES = {...}  # 从 agent_engine 移过来
@@ -213,7 +220,7 @@ class ReportBuilder:
 删减: agent_engine.py（-40行）
 ```
 
-### Phase 2 后 agent_engine.py 结构
+### Phase 2 后 agent\_engine.py 结构
 
 ```
 class AgentEngine:                    # ~350行（原963行）
@@ -240,9 +247,9 @@ class AgentEngine:                    # ~350行（原963行）
 - [x] 全部 curl 测试用例（selection/competitive/trend/copy/pricing/launch/image）通过
 - [x] 报告内容与优化前基本一致
 - [x] pytest 93 passed + 2 xfailed
-- [x] agent_engine.py 616 行（目标 400，因新增 decompose_engine 和 conversation 等独立模块仍留了一定编排逻辑）
+- [x] agent\_engine.py 616 行（目标 400，因新增 decompose\_engine 和 conversation 等独立模块仍留了一定编排逻辑）
 
----
+***
 
 ## Phase 3：基础设施（生产级底座）
 
@@ -269,6 +276,7 @@ class SQLiteStore(Store):    # 生产级，事务+并发安全
 ```
 
 **迁移路径**：
+
 1. 创建 Store 接口 → MemorySystem 内部适配
 2. 默认使用 JsonFileStore（当前行为不变）
 3. 通过环境变量 `STORE_BACKEND=sqlite` 切换到 SQLite
@@ -282,6 +290,7 @@ class SQLiteStore(Store):    # 生产级，事务+并发安全
 ```
 
 **内容**：
+
 - 结构化日志（`structlog`）：每条日志带 `request_id`、`session_id`、`phase`
 - 请求耗时统计（middleware）：`/api/chat` 的 P50/P95/P99
 - LLM token 用量累计（全局计数器，暴露到 `/api/metrics`）
@@ -315,13 +324,13 @@ async def generate():
         yield ...
 ```
 
----
+***
 
 ## Phase 4：多租户就绪
 
 ### 4.1 依赖注入容器（2h）
 
-> 📋 未实现。当前 agent_engine 在 `__init__` 中直接创建实例变量（`self.memory = MemorySystem()` 等），未使用 DI 容器。待多租户场景到来时再实施。
+> 📋 未实现。当前 agent\_engine 在 `__init__` 中直接创建实例变量（`self.memory = MemorySystem()` 等），未使用 DI 容器。待多租户场景到来时再实施。
 
 ```
 计划新增: backend/container.py（尚未创建）
@@ -356,17 +365,17 @@ backend/config.py → 支持 dev / staging / prod 分层
 
 通过 `APP_ENV` 环境变量切换。
 
----
+***
 
 ## 风险控制总则
 
-| 原则 | 操作 |
-|------|------|
-| 每次改动 ≤ 2 个文件 | 大规模重构拆成多个小 PR |
-| 新模块与旧模块并存 | 先加新的，验证后再删旧的 |
-| 每 Phase 有回滚路径 | Git tag 标记 Phase 前状态 |
-| CI 自动化回归 | Phase 1 就开始建 curl 测试脚本 |
-| 不改 API 契约 | `/api/chat` 的请求/响应格式一直不变 |
+| 原则            | 操作                       |
+| ------------- | ------------------------ |
+| 每次改动 ≤ 2 个文件  | 大规模重构拆成多个小 PR            |
+| 新模块与旧模块并存     | 先加新的，验证后再删旧的             |
+| 每 Phase 有回滚路径 | Git tag 标记 Phase 前状态     |
+| CI 自动化回归      | Phase 1 就开始建 curl 测试脚本   |
+| 不改 API 契约     | `/api/chat` 的请求/响应格式一直不变 |
 
 ## 不做什么
 
@@ -375,3 +384,4 @@ backend/config.py → 支持 dev / staging / prod 分层
 - ❌ 不重写前端（仅在当前 HTML 文件内优化）
 - ❌ 不引入 Celery/RabbitMQ 等消息队列（不需要异步任务解耦）
 - ❌ 不引入微服务拆分（单进程足够）
+
