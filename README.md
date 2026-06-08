@@ -48,7 +48,19 @@ docker build -t zhijing .
 docker run -p 8899:8899 --env-file .env zhijing
 ```
 
-***
+---
+
+## 测试
+
+```bash
+# 单元测试（mock LLM，快速）
+make test
+
+# 集成测试（真实调用 DeepSeek API，需要有效密钥）
+make test-integration
+```
+
+---
 
 ## 截图
 ![alt text](docs/screenshots/image.png)
