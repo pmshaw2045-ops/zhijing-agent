@@ -323,9 +323,9 @@ class AgentEngine:
             dag = {"tasks": tasks, "dag_structure": template["dag_structure"]}
         else:
             yield {"type": "phase", "phase": "decompose", "status": "running", "model": MODEL_PRO}
-            p_decompose = self._build_decompose_prompt(intent, detected_mode)
+            p_decompose = self.decompose_engine.build_prompt(intent, detected_mode)
             yield {"type": "prompt", "phase": "decompose", "model": MODEL_PRO, "prompt": p_decompose, "label": "Phase 3: DAG任务拆解"}
-            dag = await self._llm_decompose(intent, detected_mode, prompt=p_decompose)
+            dag = await self.decompose_engine.decompose(intent, detected_mode, prompt=p_decompose)
             yield {"type": "phase", "phase": "decompose", "status": "done", "data": dag}
 
         # ====== Phase 4: 工具映射 ======

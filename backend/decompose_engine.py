@@ -95,6 +95,7 @@ class DecomposeEngine:
                           f" 原始返回前200字: {raw[:200]}")
             return {
                 "tasks": template["tasks"],
+                "dag_structure": template.get("dag_structure", ""),
                 "parallel_groups": [["T2", "T3", "T4"]],
                 "_fallback": True,
             }
