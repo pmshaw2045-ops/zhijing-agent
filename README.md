@@ -4,7 +4,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/YOUR_USERNAME/fashion-agent-v2/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://github.com/pmshaw2045-ops/zhijing-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/tests-130%20passed-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/coverage-72%25-yellow.svg" alt="Coverage">
@@ -24,8 +24,8 @@
 
 ```bash
 # 1. 克隆
-git clone https://github.com/YOUR_USERNAME/fashion-agent-v2.git
-cd fashion-agent-v2
+git clone https://github.com/pmshaw2045-ops/zhijing-agent.git
+cd zhijing-agent
 
 # 2. 配置密钥（支持任意 OpenAI 兼容 API）
 cp .env.example .env
@@ -80,7 +80,7 @@ make test-integration
          → ReflectionEngine (质量审查, 7 分阈值)
          → SSE 流式返回
 ```
-fashion-agent-v2/
+zhijing-agent/
 ├── AGENTS.md              项目主文档（AI Agent 入口）
 ├── backend/               28 模块 / 4,100+ 行
 │   ├── agent_engine.py    Pipeline 编排

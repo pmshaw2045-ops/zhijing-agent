@@ -128,7 +128,7 @@ FastAPI Server (backend/server.py)
 ## 文件结构
 
 ```
-/Users/admin/Desktop/test/fashion-agent-v2/
+本项目根目录（`./`）
 ├── AGENTS.md              ← 本文件
 ├── docs/                  ← 文档目录
 │   ├── product_summary.md     产品与技术总结
