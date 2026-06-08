@@ -776,7 +776,7 @@ function handleSSEEvent(event, bubble) {
     if (q.shortfall) html += '<p style="margin:4px 0;font-size:12px;color:#c06030">⚠️ 质量未达标，建议结合人工判断</p>';
     html += '</div>';
     var bubbleEl = bubble.querySelector('.msg-bubble');
-    bubbleEl.innerHTML += html;
+    bubbleEl.insertAdjacentHTML('beforeend', html);
 
   } else if (type === 'result') {
     var bubbleEl = bubble.querySelector('.msg-bubble');
