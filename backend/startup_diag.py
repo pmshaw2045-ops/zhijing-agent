@@ -215,7 +215,7 @@ def print_diagnostics(results: list[dict]) -> None:
                 print(f"  ✓  [{module}] .py={py_mtime_str}, .pyc={pyc_mtime_str}")
             else:
                 print(f"  ⚠️  [{module}] .py 比 .pyc 新! .py={py_mtime_str}, .pyc={pyc_mtime_str}")
-                print(f"       → 建议清除 __pycache__ 后重启")
+                print("       → 建议清除 __pycache__ 后重启")
                 has_issues = True
 
     print("=" * 60)

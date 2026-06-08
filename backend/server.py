@@ -41,9 +41,9 @@ async def lifespan(app: FastAPI):
     from .config import APP_ENV, IS_PROD
     logger.info(f"织镜 ZHÌJÌNG Agent 启动 (env={APP_ENV})")
     if IS_PROD:
-        logger.info(f"  ⚠️  PRODUCTION 模式：认证已启用")
-    logger.info(f"  API: http://localhost:8899/api/chat")
-    logger.info(f"  前端: http://localhost:8899/")
+        logger.info("  ⚠️  PRODUCTION 模式：认证已启用")
+    logger.info("  API: http://localhost:8899/api/chat")
+    logger.info("  前端: http://localhost:8899/")
 
     # === 启动自检 ===
     try:

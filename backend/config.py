@@ -38,7 +38,7 @@ try:
     _base_env = PROJECT_ROOT / ".env"
     if _base_env.exists():
         load_dotenv(_base_env)
-        logger.info(f"Loaded .env (base)")
+        logger.info("Loaded .env (base)")
     
     # 2. 环境专属 .env.{APP_ENV}（覆盖基础值）
     _env_specific = PROJECT_ROOT / f".env.{APP_ENV}"

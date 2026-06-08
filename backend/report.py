@@ -223,7 +223,6 @@ JSON规则：
 
 def _clean(text: str) -> str:
     """清理LLM输出 — 提取JSON"""
-    import re
     text = text.strip()
 
     # 移除 markdown 代码块

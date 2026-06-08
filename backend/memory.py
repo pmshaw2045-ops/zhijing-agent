@@ -9,6 +9,9 @@ import time
 import threading
 from pathlib import Path
 from typing import Optional, Callable, Coroutine, Any
+import logging
+
+logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).parent.parent / "data"
 MEMORY_FILE = DATA_DIR / "memory_store.json"
@@ -161,7 +164,7 @@ class MemorySystem:
                 else:
                     text = text[:500]
                 lines.append(f"- **{role}**: {text}")
-            parts.append(f"## 最近对话\n" + "\n".join(lines))
+            parts.append("## 最近对话\n" + "\n".join(lines))
 
         # 3. 当前工作记忆
         if working.get("last_intent"):
@@ -177,7 +180,7 @@ class MemorySystem:
                 if isinstance(v, list) and v:
                     tc_parts.append(f"- {k}: {', '.join(str(x) for x in v[-3:])}")
             if tc_parts:
-                parts.append(f"## 主题偏好\n" + "\n".join(tc_parts))
+                parts.append("## 主题偏好\n" + "\n".join(tc_parts))
 
         # 5. 分析历史
         if history:
@@ -185,7 +188,7 @@ class MemorySystem:
             for h in history[-3:]:
                 h_parts.append(f"- [{h.get('intent','?')}] {h.get('summary','')[:80]}")
             if h_parts:
-                parts.append(f"## 最近分析\n" + "\n".join(h_parts))
+                parts.append("## 最近分析\n" + "\n".join(h_parts))
 
         return "\n\n".join(parts)
 
@@ -210,7 +213,7 @@ class MemorySystem:
             for m in new_messages
         )
         summary_prompt = (
-            f"你是一个对话摘要助手。将以下对话片段压缩为简洁的要点摘要（不超过200字），提取关键信息：品类、品牌、价格带、用户偏好、分析结论。\n\n"
+            "你是一个对话摘要助手。将以下对话片段压缩为简洁的要点摘要（不超过200字），提取关键信息：品类、品牌、价格带、用户偏好、分析结论。\n\n"
         )
         if existing_summary:
             summary_prompt += f"现有历史摘要:\n{existing_summary}\n\n"

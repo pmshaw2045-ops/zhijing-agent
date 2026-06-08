@@ -490,7 +490,7 @@ class AgentEngine:
         goal = intent.get("goal", {})
         intent_type = intent.get("intent_type", "分析")
         tools_list = ", ".join([t["name"] for t in AVAILABLE_TOOLS])
-        return f"""你是任务规划专家。根据用户意图和可用工具，自主设计最优DAG任务流。
+        prompt = f"""你是任务规划专家。根据用户意图和可用工具，自主设计最优DAG任务流。
 
 意图类型: {intent_type}
 用户目标: {json.dumps(goal, ensure_ascii=False)[:500]}
@@ -519,13 +519,26 @@ class AgentEngine:
 
 每个任务绑定一个工具, 无依赖可并行, 3-6个任务。可参考模板但要根据实际目标调整。
 只输出JSON。"""
-
+        return prompt
     async def _llm_decompose(self, intent: dict, detected_mode: str, prompt: str = None) -> dict:
         if prompt is None:
             prompt = self._build_decompose_prompt(intent, detected_mode)
         template = self.dag_loader.load(detected_mode) or self.dag_loader.load("selection")
-        raw = await chat(prompt, model=MODEL_PRO, max_tokens=1200)
+        raw = await chat(prompt, model=MODEL_PRO, max_tokens=1200, json_mode=True)
         result = extract_json(raw)
+
+        # 标准化 task 字段名
+        if result and "tasks" in result:
+            normalized = []
+            for t in result["tasks"]:
+                normalized.append({
+                    "id": str(t.get("id", "")),
+                    "desc": t.get("desc", t.get("description", "")),
+                    "tool": t.get("tool", "web_search"),
+                    "deps": t.get("deps", t.get("depends_on", [])),
+                    "parallel_group": t.get("parallel_group", t.get("group", 0)),
+                })
+            result["tasks"] = normalized
 
         if not result or "tasks" not in result:
             # fallback: 使用该意图的默认模板
@@ -536,8 +549,9 @@ class AgentEngine:
                 "_fallback": True,
             }
 
+        result["_llm_generated"] = True
+        result["_fallback"] = False
         return result
-
     # ====== Phase 4-5: 工具映射 + 执行 (P0加持) ======
     def _map_tools(self, dag):
         tool_names = [t["name"] for t in AVAILABLE_TOOLS]

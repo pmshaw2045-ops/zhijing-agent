@@ -1,0 +1,14 @@
+[tool.ruff]
+target-version = "py311"
+
+lint.ignore = [
+    "F401",
+    "F841",
+    "E501",
+    "E722",
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["F401", "F841", "E501", "S101"]
+"backend/harness/*" = ["F401"]
+"backend/decompose_engine.py" = ["F401"]

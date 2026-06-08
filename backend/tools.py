@@ -76,7 +76,7 @@ async def _tavily_search(query: str, limit: int = 5) -> dict:
         }
     except Exception as e:
         logger.error(f"Tavily search failed: {e}")
-        return {"tool": "web_search", "query": query, "error": str(e), "summary": f"搜索出错", "snippets": []}
+        return {"tool": "web_search", "query": query, "error": str(e), "summary": "搜索出错", "snippets": []}
 
 
 # ====== 博查搜索 (Bocha AI) ======
@@ -124,7 +124,7 @@ async def _bocha_search(query: str, limit: int = 8) -> dict:
         }
     except Exception as e:
         logger.error(f"Bocha search failed: {e}")
-        return {"tool": "bocha_search", "query": query, "error": str(e), "summary": f"博查搜索出错", "snippets": [], "source": "bocha_chinese"}
+        return {"tool": "bocha_search", "query": query, "error": str(e), "summary": "博查搜索出错", "snippets": [], "source": "bocha_chinese"}
 
 
 # ====== LLM-Driven Analysis Tools ======
@@ -351,7 +351,7 @@ def _tavily_search_sync(query: str, limit: int = 5) -> dict:
         }
     except Exception as e:
         logger.error(f"web_search failed: {e}")
-        return {"tool": "web_search", "query": query, "error": str(e), "summary": f"搜索出错", "snippets": []}
+        return {"tool": "web_search", "query": query, "error": str(e), "summary": "搜索出错", "snippets": []}
 
 
 def _bocha_search_sync(query: str, limit: int = 8) -> dict:
@@ -385,7 +385,7 @@ def _bocha_search_sync(query: str, limit: int = 8) -> dict:
         }
     except Exception as e:
         logger.error(f"bocha_search failed: {e}")
-        return {"tool": "bocha_search", "query": query, "error": str(e), "summary": f"博查出错", "snippets": [], "source": "bocha_chinese"}
+        return {"tool": "bocha_search", "query": query, "error": str(e), "summary": "博查出错", "snippets": [], "source": "bocha_chinese"}
 
 
 def _image_generate(params: dict) -> dict:
