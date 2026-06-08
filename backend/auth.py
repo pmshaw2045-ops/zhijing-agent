@@ -16,8 +16,12 @@ from starlette.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
-_PUBLIC_PATHS = {"/", "/api/health", "/favicon.ico"}
-_DEV_MODE = "API_TOKEN" not in os.environ and "API_KEYS" not in os.environ
+_PUBLIC_PATHS = {"/", "/api/health", "/favicon.ico", "/style.css", "/render.js", "/console.js", "/sse.js", "/handler.js"}
+_DEFAULT_TOKEN = "change-me-to-a-random-string"
+_DEV_MODE = (
+    ("API_TOKEN" not in os.environ and "API_KEYS" not in os.environ)
+    or os.environ.get("API_TOKEN", "") == _DEFAULT_TOKEN
+)
 _RATE_LIMIT_RPM = int(os.environ.get("RATE_LIMIT_RPM", "60" if _DEV_MODE else "30"))
 
 
