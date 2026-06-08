@@ -86,7 +86,13 @@ async def root():
     """前端页面"""
     index_path = FRONTEND_DIR / "index.html"
     if index_path.exists():
-        return HTMLResponse(index_path.read_text(encoding="utf-8"),
+        html = index_path.read_text(encoding="utf-8")
+        # 注入 API token（前端发请求时带上认证）
+        api_token = os.environ.get("API_TOKEN", "")
+        if api_token and api_token != "change-me-to-a-random-string":
+            token_script = f"<script>const API_TOKEN='{api_token}';</script>"
+            html = html.replace("<script>", f"{token_script}\n<script>", 1)
+        return HTMLResponse(html,
                            headers={"Cache-Control": "no-cache"})
 
 

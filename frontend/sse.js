@@ -57,7 +57,10 @@ async function sendMessageWithClarify(answer, sid) {
   try {
     const response = await fetch(API_BASE + '/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(typeof API_TOKEN !== 'undefined' ? {'Authorization': 'Bearer ' + API_TOKEN} : {})
+      },
       body: JSON.stringify({ message: answer, session_id: sid, mode: currentMode, clarify_answer: answer })
     });
 
@@ -118,7 +121,10 @@ async function sendMessage() {
     try {
       const response = await fetch(API_BASE + '/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(typeof API_TOKEN !== 'undefined' ? {'Authorization': 'Bearer ' + API_TOKEN} : {})
+        },
         body: JSON.stringify({ message: text, session_id: sessionId, mode: currentMode })
       });
 
