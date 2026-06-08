@@ -88,6 +88,21 @@ FastAPI Server (backend/server.py)
 | 工具层LLM提取 | `deepseek-chat` (V3) | 结构化提取 |
 | 记忆压缩摘要 | `deepseek-chat` (V3) | max_tokens=200 |
 
+## Prompt 数据注入规范
+
+所有 Phase 在将用户需求注入 prompt 时，统一使用自然语言渲染而非 raw JSON。
+
+| ✅ 正确做法 | ❌ 反面做法 |
+|---|---|
+| `用户目标: {goal_to_text(goal)}` → `品类：连衣裙，时间范围：2026夏季` | `需求: {json.dumps(goal, ...)}` → `{"品类": "连衣裙", "时间范围": "2026夏季", "风格": null}` |
+
+规则：
+- 去 null / [] / "未指定" / "None" — 无信息字段不注入
+- 去 JSON 结构符号（`{}` `""` `,` 缩进）— 纯自然语言
+- list 字段用"、"连接而非 Python 列表表示
+- 共享函数 `goal_to_text()` 在 `backend/intent.py` 中，所有 prompt builder 统一调用
+- 当前通过区域：DecomposeEngine (decompose_engine.py) ✅ ReportBuilder (report.py) ✅ ReflectionEngine (reflect.py) ✅
+
 ## DAG 拆解策略
 
 **LLM自主拆解** (当前):
@@ -116,41 +131,56 @@ FastAPI Server (backend/server.py)
 /Users/admin/Desktop/test/fashion-agent-v2/
 ├── AGENTS.md              ← 本文件
 ├── PRD.md                 ← 产品需求文档
-├── architecture_review.md ← 架构审查报告
-├── summary_20260606.md    ← 产品总结
-├── backend/               ← 23模块 / 3,892行
-│   ├── server.py          163行  FastAPI 主服务
-│   ├── agent_engine.py    1050行 Agent Pipeline (待拆分)
-│   ├── memory.py          394行  五层记忆系统
-│   ├── tools.py           395行  8个工具实现
-│   ├── report.py          253行  JSON报告生成器
-│   ├── intent_registry.py 226行  意图元数据中心
+├── docs/                  ← 文档目录
+│   ├── product_summary.md     产品与技术总结
+│   ├── product_roadmap.md     产品路线图
+│   ├── architecture_optimization.md  架构优化方案
+│   ├── sse_reconnect_design.md   SSE重连设计
+│   ├── production_plan.md     生产级优化执行计划
+│   ├── test_cases.md          测试用例
+│   ├── deploy.md              部署指南
+│   └── archive/               历史存档
+├── backend/               ← 23 模块 / 4,147 行
+│   ├── agent_engine.py    616行  Agent Pipeline
+│   ├── memory.py          433行  五层记忆系统
+│   ├── tools.py           397行  8个工具实现
+│   ├── report.py          255行  JSON报告生成器
+│   ├── intent_registry.py 227行  意图元数据中心
 │   ├── config.py          132行  配置管理
-│   ├── llm_client.py      121行  LLM客户端
+│   ├── llm_client.py      138行  LLM客户端
 │   ├── precheck.py        140行  前置校验引擎
-│   ├── intent.py          118行  意图识别路由
+│   ├── intent.py          120行  意图识别路由 + goal_to_text
 │   ├── observability.py   116行  指标收集
-│   ├── conversation.py    114行  多轮场景检测
+│   ├── conversation.py    128行  多轮场景检测
+│   ├── decompose_engine.py 109行 DAG自主拆解
+│   ├── storage.py         147行  存储后端
 │   ├── auth.py            100行  认证+限流
-│   ├── reflect.py         58行   反思引擎
+│   ├── reflect.py         62行   反思引擎
 │   ├── image_optimizer.py 53行   文生图优化
-│   ├── harness/           420行  管道基础设施
-│   │   ├── tracer.py      98行   全链路追踪
-│   │   ├── router.py      87行   CostRouter
-│   │   ├── executor.py    85行   ParallelExecutor
-│   │   ├── registry.py    83行   ToolRegistry
-│   │   └── dag_loader.py  66行   DAG模板加载
-│   └── requirements.txt
+│   ├── startup_diag.py    232行  启动自检
+│   └── harness/           421行  管道基础设施
+│       ├── tracer.py      98行   全链路追踪
+│       ├── router.py      80行   CostRouter
+│       ├── executor.py    95行   ParallelExecutor
+│       ├── registry.py    83行   ToolRegistry
+│       └── dag_loader.py  66行   DAG模板加载
 ├── frontend/
-│   └── index.html         1204行 SPA前端 (待拆分)
-├── tests/                 4个测试文件 / 32项测试
-│   ├── conftest.py
+│   └── index.html         1204行 SPA前端
+├── tests/                 9个测试文件 / 93passed+2xfailed
+│   ├── conftest.py        mock OpenAI fixture
+│   ├── test_agent_engine.py  Pipeline流程
 │   ├── test_config.py
 │   ├── test_intent_registry.py
 │   ├── test_memory.py
-│   └── test_report_clean.py
+│   ├── test_pipeline.py   工具/拆解/预检
+│   ├── test_report_clean.py
+│   ├── test_server.py     API端点+SSE
+│   └── test_tools.py      LLM驱动工具
+├── frontend/tests/        2个测试 / 14 passed
+│   ├── setup.test.js
+│   └── render.test.js
 ├── .github/workflows/
-│   └── test.yml           CI自动运行pytest
+│   └── test.yml           CI自动运行pytest+ruff
 └── data/
     └── memory_store.json  持久化记忆
 ```

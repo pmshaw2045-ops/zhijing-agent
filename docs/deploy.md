@@ -7,25 +7,13 @@
 cp .env.example .env
 # 编辑 .env 填入真实密钥
 
-# 2. (可选) 从JSON迁移到SQLite
-STORE_BACKEND=sqlite python3 backend/store.py
-
-# 3. 启动
-docker-compose up -d
-
-# 或直接运行
+# 2. 启动
 python3 -m uvicorn backend.server:app --host 0.0.0.0 --port 8899
 ```
 
 ## 存储后端
 
-默认使用 JSON 文件 (`data/memory_store.json`)。
-切换到 SQLite：在 `.env` 中设置 `STORE_BACKEND=sqlite`。
-
-迁移现有数据：
-```bash
-python3 -c "from backend.store import migrate_json_to_sqlite; n=migrate_json_to_sqlite(); print(f'{n} 会话已迁移')"
-```
+默认使用 JSON 文件 (`data/memory_store.json`)。当前 ~360 会话，JSON 文件足够，暂不需要迁移 SQLite。
 
 ## API 认证
 
