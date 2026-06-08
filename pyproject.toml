@@ -14,8 +14,11 @@ lint.ignore = [
 "backend/decompose_engine.py" = ["F401"]
 
 [tool.pytest.ini_options]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -m 'not integration'"
 testpaths = ["tests"]
+markers = [
+    "integration: marks tests that call real LLM APIs (skipped without DEEPSEEK_API_KEY)",
+]
 
 [tool.coverage.run]
 source = ["backend"]

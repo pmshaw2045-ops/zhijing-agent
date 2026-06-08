@@ -8,11 +8,20 @@ from pathlib import Path
 # 添加 backend 到 path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
-# 确保测试不依赖真实 API key
-os.environ.setdefault("DEEPSEEK_API_KEY", "test-key")
-os.environ.setdefault("ARK_API_KEY", "test-key")
-os.environ.setdefault("TAVILY_API_KEY", "test-key")
-os.environ.setdefault("BOCHA_API_KEY", "test-key")
+# 强制使用测试 key（防止 config.py 加载 .env 时覆盖）
+os.environ["DEEPSEEK_API_KEY"] = "test-key"
+os.environ["ARK_API_KEY"] = "test-key"
+os.environ["TAVILY_API_KEY"] = "test-key"
+os.environ["BOCHA_API_KEY"] = "test-key"
+
+
+@pytest.fixture
+def integration():
+    """集成测试标记：跳过无真实 API Key 的测试"""
+    key = os.environ.get("DEEPSEEK_API_KEY", "")
+    if not key or key == "test-key":
+        pytest.skip("跳过集成测试（需要设置 DEEPSEEK_API_KEY）")
+
 
 @pytest.fixture
 def sample_json_report():
@@ -33,6 +42,7 @@ def sample_json_report():
             {"type": "insight", "data": {"style": "tip", "title": "结论", "body": "值得切入"}}
         ]
     })
+
 
 @pytest.fixture
 def sample_json_str(sample_json_report):
