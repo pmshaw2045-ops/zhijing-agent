@@ -261,6 +261,18 @@ class AgentEngine:
                    "enhanced": enhanced_query != user_input}}
             user_input = enhanced_query
 
+        # ====== 缓存检查 (24h相同query命中, 在LLM调用前) ======
+        cache_key = f"{user_input}|{mode or 'auto'}"
+        if cache_key in self._report_cache:
+            cached_time, cached_report = self._report_cache[cache_key]
+            if time.time() - cached_time < 86400:
+                yield {"type": "cache_hit", "data": {"cached": True, "age_hours": round((time.time()-cached_time)/3600, 1)}}
+                yield {"type": "result", "content": cached_report}
+                self.tracer.finish(trace_id, success=True)
+                yield {"type": "summary", "data": get_metrics()}
+                yield {"type": "done"}
+                return
+
         # ====== Phase 1: LLM意图识别 + 工作记忆更新 ======
         yield {"type": "phase", "phase": "intent", "status": "running", "model": MODEL_FLASH}
         p_intent = self.intent_router.build_prompt(user_input, mode, session_id)
@@ -293,18 +305,6 @@ class AgentEngine:
             yield {"type": "clarify", "message": clarify_msg, "gaps": gaps, "session_id": session_id}
             yield {"type": "done"}
             return
-
-        # ====== 缓存检查 (24h相同query命中) ======
-        cache_key = f"{user_input}|{mode or 'auto'}"
-        if cache_key in self._report_cache:
-            cached_time, cached_report = self._report_cache[cache_key]
-            if time.time() - cached_time < 86400:  # 24h内有效
-                yield {"type": "cache_hit", "data": {"cached": True, "age_hours": round((time.time()-cached_time)/3600, 1)}}
-                yield {"type": "result", "content": cached_report}
-                self.tracer.finish(trace_id, success=True)
-                yield {"type": "summary", "data": get_metrics()}
-                yield {"type": "done"}
-                return
 
         # ====== Phase 3: DAG拆解 (image 是生成任务无需拆解，其余意图全部 LLM 拆解) ======
         _FIXED_DAG_MODES = {"image"}
