@@ -7,7 +7,7 @@ from intent_registry import (
     get_decompose_rule, get_all_dags
 )
 
-EXPECTED_INTENTS = ["selection", "competitive", "trend", "copy", "pricing", "launch", "image"]
+EXPECTED_INTENTS = ["selection", "competitive", "trend", "copy", "pricing", "launch", "image", "unknown"]
 
 
 class TestRegistryCompleteness:
@@ -31,7 +31,7 @@ class TestRegistryCompleteness:
         for mode, info in INTENT_REGISTRY.items():
             dag = info["dag"]
             assert "tasks" in dag, f"{mode} DAG missing tasks"
-            assert len(dag["tasks"]) >= 1, f"{mode} DAG has 0 tasks"
+            assert len(dag["tasks"]) >= 1 or info.get("skip_decompose"), f"{mode} DAG has 0 tasks"
 
 
 class TestRegistryHelpers:

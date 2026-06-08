@@ -167,6 +167,22 @@ INTENT_REGISTRY = {
             "dag_structure": "T1",
         },
     },
+    "unknown": {
+        "mode": "unknown",
+        "name": "无法识别",
+        "display": "无法识别",
+        "complexity": Complexity.SIMPLE,
+        "decompose_rule": "无需拆解，直接返回无法识别的提示",
+        "intent_signals": [],
+        "precheck": [],
+        "relevant_tools": [],
+        "skip_decompose": True,
+        "dag": {
+            "description": "无法识别：直接返回友好提示",
+            "tasks": [],
+            "dag_structure": "N/A",
+        },
+    },
 }
 
 # ============================================================

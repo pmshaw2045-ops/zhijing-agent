@@ -282,6 +282,20 @@ class AgentEngine:
         yield {"type": "phase", "phase": "intent", "status": "done",
                "data": {"intent": intent, "auto_routed": detected_mode}}
 
+        # ====== Phase 1.5: 无法识别或置信度过低 → 直接返回友好提示 ======
+        unknown_intent = detected_mode == "unknown"
+        low_confidence = intent.get("confidence", 1.0) < 0.6 and detected_mode not in ("selection", "competitive", "image")
+        if unknown_intent or low_confidence:
+            report_text = json.dumps({
+                "title": "无法识别您的需求",
+                "sections": [{"type": "text", "data": {"content": "抱歉，我目前是服饰电商AI Agent，只能处理以下几种类型的问题：\n\n• 📊 选品分析 — 如\"分析2026夏季连衣裙选品机会\"\n• 🏷️ 竞品对标 — 如\"太平鸟vs伊芙丽对比\"\n• 📈 趋势洞察 — 如\"今年夏季连衣裙流行趋势\"\n• ✍️ 文案生成 — 如\"生成法式茶歇裙淘宝标题\"\n• 💰 定价策略 — 如\"连衣裙在天猫的定价策略\"\n• 📅 上新排期 — 如\"夏季连衣裙上新排期建议\"\n• 🎨 文生图 — 如\"生成法式碎花茶歇裙设计图\"\n\n请提供更具体的服饰电商相关需求。"}}]
+            }, ensure_ascii=False)
+            yield {"type": "result", "content": report_text}
+            self.tracer.finish(trace_id, success=True)
+            yield {"type": "summary", "data": get_metrics()}
+            yield {"type": "done"}
+            return
+
         # 更新工作记忆主题上下文
         self.memory.update_topic_context(session_id, intent)
 
