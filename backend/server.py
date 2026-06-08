@@ -48,23 +48,23 @@ async def lifespan(app: FastAPI):
     logger.info("  API: http://localhost:8899/api/chat")
     logger.info("  前端: http://localhost:8899/")
 
-    # === 启动自检 ===
-    try:
-        from .startup_diag import run_diagnostics, print_diagnostics
-        diag_results = run_diagnostics()
-        print_diagnostics(diag_results)
-        # 检查是否有严重问题
-        has_issues = any(
-            "error" in r or r.get("missing_params") or
-            (r.get("pyc_mtime") is not None and not r.get("fresh", True))
-            for r in diag_results
-        )
-        if has_issues:
-            logger.warning("⚠️ 启动自检发现问题。建议: find backend -name __pycache__ -exec rm -rf {} +")
-    except ImportError:
-        logger.info("  startup_diag 模块不可用，跳过自检")
-    except Exception as e:
-        logger.warning(f"  启动自检异常: {e}")
+    # === 启动自检（仅 dev 模式，prod 静默） ===
+    if not IS_PROD:
+        try:
+            from .startup_diag import run_diagnostics, print_diagnostics
+            diag_results = run_diagnostics()
+            print_diagnostics(diag_results)
+            has_issues = any(
+                "error" in r or r.get("missing_params") or
+                (r.get("pyc_mtime") is not None and not r.get("fresh", True))
+                for r in diag_results
+            )
+            if has_issues:
+                logger.warning("⚠️ 启动自检发现问题。建议: find backend -name __pycache__ -exec rm -rf {} +")
+        except ImportError:
+            logger.info("  startup_diag 模块不可用，跳过自检")
+        except Exception as e:
+            logger.warning(f"  启动自检异常: {e}")
 
     diag = engine.memory.stats()
     logger.info(f"  会话: {diag.get('total_sessions', '?')} | 知识: {diag.get('knowledge_count', '?')}")

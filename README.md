@@ -51,9 +51,9 @@ docker run -p 8899:8899 --env-file .env zhijing
 ***
 
 ## 截图
-![alt text](image.png)
-![alt text](image-1.png)
-![alt text](image-2.png)
+![alt text](docs/screenshots/image.png)
+![alt text](docs/screenshots/image-1.png)
+![alt text](docs/screenshots/image-2.png)
 
 ***
 
