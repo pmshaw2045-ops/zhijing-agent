@@ -21,7 +21,7 @@
       <span>会话: <span class="val" id="sidDisplay">-</span></span>
       <span>记忆: <span class="val" id="memDisplay">就绪</span></span>
     </div>
-    <div class="header-status"><span class="dot"></span> Agent 就绪 <span class="header-model-tag">v4-pro+chat</span></div>
+    <div class="header-status"><span class="dot"></span> Agent 就绪 <span class="header-model-tag" id="modelTag">LLM</span></div>
     <button class="btn-toggle-console" id="btnToggleConsole" title="展开/收起控制台">☰</button>
   </header>
   <div class="content">
@@ -31,14 +31,14 @@
           <div class="msg-avatar agent">织</div>
           <div class="msg-bubble">
             <h3>欢迎使用织镜 ZHÌJÌNG</h3>
-            <p>我是服饰电商AI Agent，<b>真实调用DeepSeek大模型</b>驱动全流程：</p>
+            <p>我是服饰电商 AI Agent，<b>真实调用 LLM</b> 全流程驱动：</p>
             <ul>
-              <li>🔍 <b>意图识别</b> → deepseek-chat</li>
-              <li>🧩 <b>DAG任务拆解</b> → deepseek-v4-pro (推理)</li>
-              <li>⚡ <b>执行调度</b> → LLM驱动工具 (deepseek-chat)</li>
-              <li>📝 <b>报告生成</b> → deepseek-chat</li>
-              <li>🛡️ <b>反思修正</b> → deepseek-v4-pro</li>
-              <li>🎨 <b>文生图</b> → doubao-seedream-5-0</li>
+              <li>🔍 <b>意图识别</b> → 模型 flash（轻量快速）</li>
+              <li>🧩 <b>DAG任务拆解</b> → 模型 pro（深度推理）</li>
+              <li>⚡ <b>执行调度</b> → LLM 驱动工具</li>
+              <li>📝 <b>报告生成</b> → 模型 chat（标准综合）</li>
+              <li>🛡️ <b>反思修正</b> → 模型 pro</li>
+              <li>🎨 <b>文生图</b> → 独立模型（可配置）</li>
             </ul>
             <p style="margin-top:8px;color:var(--text-light);font-size:12px">右侧控制台实时展示LLM调用、DAG结构、状态流转</p>
           </div>
@@ -90,6 +90,15 @@ let currentMode = 'selection';
 let isProcessing = false;
 
 document.getElementById('sidDisplay').textContent = sessionId;
+
+// 从 health API 动态获取模型名显示在 header
+fetch('/api/health').then(function(r){return r.json();}).then(function(d){
+  if (d.models) {
+    document.getElementById('modelTag').textContent = d.models.flash;
+  }
+}).catch(function(){
+  // 静默兜底，保留默认文本 "LLM"
+});
 </script>
 
 <script src="/console.js"></script>

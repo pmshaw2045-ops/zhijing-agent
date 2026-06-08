@@ -6,9 +6,9 @@ function handleSSEEvent(event, bubble) {
 
   if (type === 'phase' && status === 'running') {
     const modelMap = {
-      intent: 'deepseek-chat', precheck: 'rule_engine', decompose: 'deepseek-v4-pro',
-      tool_mapping: 'rule_engine', execute: 'execution_engine', reflect: 'deepseek-v4-pro',
-      reflect_retry: 'deepseek-v4-pro', reflect_v2: 'deepseek-v4-pro', report: 'deepseek-chat',
+      intent: 'flash', precheck: 'rule_engine', decompose: 'pro',
+      tool_mapping: 'rule_engine', execute: 'execution_engine', reflect: 'pro',
+      reflect_retry: 'pro', reflect_v2: 'pro', report: 'chat',
       conversation: 'rule_engine', router: 'rule_engine'
     };
     const model = event.model || modelMap[phase] || '';
@@ -19,7 +19,7 @@ function handleSSEEvent(event, bubble) {
       reflect_retry: 'Phase 7b: 重试', reflect_v2: 'Phase 7b: 修正版审查', report: 'Phase 6: 报告',
       conversation: 'Phase 0: 多轮检测', router: 'Phase 0: 路由判定'
     };
-    const modelColor = model.includes('v4-pro') ? '#e0c080' : model.includes('chat') ? '#80d0d0' : '#888';
+    const modelColor = model === 'pro' ? '#e0c080' : model === 'chat' || model === 'flash' ? '#80d0d0' : model.includes('pro') ? '#e0c080' : model.includes('chat') || model.includes('mini') ? '#80d0d0' : '#888';
     clog('model', phaseNames[phase] || phase + ' → <span style="color:' + modelColor + '">' + model + '</span>');
 
     // 更新状态提示
