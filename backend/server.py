@@ -95,6 +95,13 @@ async def style():
                         headers={"Cache-Control": "no-cache"})
 
 
+@app.get("/render.js")
+async def render_js():
+    return HTMLResponse((FRONTEND_DIR / "render.js").read_text(encoding="utf-8"),
+                        media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache"})
+
+
 @app.post("/api/chat")
 async def chat(request: Request):
     """
