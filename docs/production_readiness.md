@@ -138,7 +138,7 @@
 |---|---|---|---|---|
 | P0-1 | 🔴 | llm_client.chat() 无重试 | llm_client.py | ✅ |
 | P0-2 | 🔴 | SSE 端点无统一异常处理 | server.py | ✅ |
-| P0-3 | 🟡 | Token 计数粗略估算（/2） | llm_client.py | 📋 |
+| P0-3 | 🟡 | Token 计数粗略估算（/2） | llm_client.py | ✅ |
 | P1-1 | 🟡 | index_original.html 与 index.html 重复 | frontend/ | ✅ |
 | P1-2 | 🟡 | app.js 870行未使用 | frontend/ | ✅ |
 | P1-3 | 🟡 | report_*.html 样本报告在仓库 | frontend/ | ✅ |

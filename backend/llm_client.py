@@ -112,9 +112,9 @@ async def chat(prompt: str, model: str = MODEL_FLASH, max_tokens: int = 1024,
             model
         )
         output = resp.choices[0].message.content.strip()
-        # 估算 token 用量：中文≈1.5字符/token，粗略用字符数/2
-        est_tokens = len(prompt) // 2 + len(output) // 2
-        record_tokens(model, est_tokens)
+        # 精确 token 计数，从 API 响应中读取
+        if resp.usage and resp.usage.total_tokens:
+            record_tokens(model, resp.usage.total_tokens)
         return output
     except Exception as e:
         logger.error(f"DeepSeek API error (async, model={model}, after retries): {e}")
@@ -151,8 +151,9 @@ def chat_sync(prompt: str, model: str = MODEL_FLASH, max_tokens: int = 1024, tim
             model
         )
         output = resp.choices[0].message.content.strip()
-        est_tokens = len(prompt) // 2 + len(output) // 2
-        record_tokens(model, est_tokens)
+        # 精确 token 计数，从 API 响应中读取
+        if resp.usage and resp.usage.total_tokens:
+            record_tokens(model, resp.usage.total_tokens)
         return output
     except Exception as e:
         logger.error(f"DeepSeek API error (sync, model={model}, after retries): {e}")
