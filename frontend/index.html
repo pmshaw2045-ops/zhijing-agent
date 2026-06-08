@@ -430,30 +430,34 @@ async function sendMessageWithClarify(answer, sid) {
     });
 
     if (!response.ok) throw new Error('HTTP ' + response.status);
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const event = JSON.parse(line.slice(6));
-          handleSSEEvent(event, reportBubble);
-        } catch(e) { console.warn('SSE parse warning:', e.message); }
-      }
-    }
+    await _readSSEStream(response, reportBubble);
   } catch (err) {
     reportBubble.querySelector('.msg-bubble').innerHTML = '<span style="color:#c00">错误: ' + err.message + '</span>';
   } finally {
     isProcessing = false;
     btnSend.disabled = false;
+  }
+}
+
+// 公共 SSE 流读取函数
+async function _readSSEStream(response, reportBubble) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      try {
+        const event = JSON.parse(line.slice(6));
+        handleSSEEvent(event, reportBubble);
+      } catch(e) { console.warn('SSE parse warning:', e.message); }
+    }
   }
 }
 
@@ -475,38 +479,33 @@ async function sendMessage() {
 
   const reportBubble = addMessage('agent', '<div class="agent-status"><span class="dot-pulse"></span>准备中...</div>', true);
 
-  try {
-    const response = await fetch(API_BASE + '/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: text, session_id: sessionId, mode: currentMode })
-    });
+  const MAX_RETRIES = 3;
+  let lastError = null;
 
-    if (!response.ok) throw new Error('HTTP ' + response.status);
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const response = await fetch(API_BASE + '/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, session_id: sessionId, mode: currentMode })
+      });
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        try {
-          const event = JSON.parse(line.slice(6));
-          handleSSEEvent(event, reportBubble);
-        } catch(e) { console.warn('SSE parse warning:', e.message); }
-      }
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      await _readSSEStream(response, reportBubble);
+      lastError = null;
+      break;
+    } catch (err) {
+      lastError = err;
+      if (attempt >= MAX_RETRIES) break;
+      const delay = 2000 * (attempt + 1);
+      updateStatus('连接中断，' + Math.round(delay/1000) + '秒后重试...(' + (attempt+1) + '/' + MAX_RETRIES + ')');
+      await new Promise(r => setTimeout(r, delay));
     }
-  } catch (err) {
-    reportBubble.querySelector('.msg-bubble').innerHTML = '<span style="color:#c00">错误: ' + err.message + '</span>';
-    clog('error', 'Pipeline失败: ' + err.message);
+  }
+
+  if (lastError) {
+    reportBubble.querySelector('.msg-bubble').innerHTML = '<span style="color:#c00">错误: ' + lastError.message + '</span>';
+    clog('error', 'Pipeline失败: ' + lastError.message);
   } finally {
     isProcessing = false;
     btnSend.disabled = false;
