@@ -12,3 +12,19 @@ lint.ignore = [
 "tests/*" = ["F401", "F841", "E501", "S101"]
 "backend/harness/*" = ["F401"]
 "backend/decompose_engine.py" = ["F401"]
+
+[tool.pytest.ini_options]
+addopts = "-v --tb=short"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["backend"]
+omit = ["backend/startup_diag.py"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if __name__ == .__main__.:",
+    "except ImportError:",
+    "pragma: no cover",
+]
+show_missing = true
