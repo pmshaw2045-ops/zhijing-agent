@@ -313,36 +313,13 @@ class TestPipelineFlows:
     @pytest.mark.asyncio
     async def test_reflection_retry_mechanism(self, mock_openai):
         """反思评分不足 → 自动重试并选择最高分版本"""
-        # 第一次反思：低分；重试后：高分
-        reflect_call_count = [0]
-        reflect_scores = [
-            json.dumps({"scores": {"data_consistency": 5, "goal_alignment": 5,
-                                    "actionability": 5, "overall": 5.0},
-                        "passed": False, "issues": ["数据不充分"], "warnings": [], "verdict": "需要修正"},
-                       ensure_ascii=False),
-            json.dumps({"scores": {"data_consistency": 8, "goal_alignment": 8,
-                                    "actionability": 8, "overall": 8.0},
-                        "passed": True, "issues": [], "warnings": [], "verdict": "质量达标"},
-                       ensure_ascii=False),
-        ]
-
-        def dynamic_reflect_response(prompt, model=None, max_tokens=None, json_mode=False):
-            if "质检专家" in str(prompt):
-                idx = reflect_call_count[0]
-                reflect_call_count[0] += 1
-                return reflect_scores[min(idx, len(reflect_scores) - 1)]
-            if "任务规划" in str(prompt):
-                return json.dumps(SAMPLE_DAG, ensure_ascii=False)
-            return SAMPLE_REPORT
-
         mock_openai.set_response("识别专家", json.dumps(SAMPLE_INTENT, ensure_ascii=False))
+        mock_openai.set_response("任务规划", json.dumps(SAMPLE_DAG, ensure_ascii=False))
 
-        # 覆写 mock_openai 的逻辑：让 QA 专家返回动态结果
         from agent_engine import AgentEngine
-        import llm_client as llm_mod
-
-        # 给 tool 调用也 mock 掉
         import agent_engine as ae_mod
+        from unittest.mock import AsyncMock
+        import llm_client as llm_mod
 
         with patch.object(ae_mod, 'execute_tool_sync',
                           lambda *a, **kw: {"summary": "mock", "_llm_driven": False}):
@@ -350,22 +327,33 @@ class TestPipelineFlows:
             eng = AgentEngine()
             eng.precheck.check = MagicMock(return_value=PASSED_PRECHECK)
 
-            # 接管 report_builder.generate 让它返回固定值（不依赖 LLM）
-            from report import ReportBuilder
-            eng.report_builder = ReportBuilder(eng.memory)
-            orig_generate = eng.report_builder.generate
-
+            # 接管 report_builder.generate
             report_call_count = [0]
             async def mock_generate(*args, **kwargs):
                 report_call_count[0] += 1
                 if report_call_count[0] >= 2:
                     return json.dumps({"title": "修正版", "sections": []}, ensure_ascii=False)
                 return SAMPLE_REPORT
-
             eng.report_builder.generate = mock_generate
 
+            # 直接 mock reflection_engine.evaluate 返回动态分数
+            reflect_call_count = [0]
+            reflect_scores = [
+                {"scores": {"data_consistency": 5, "goal_alignment": 5,
+                           "actionability": 5, "overall": 5.0},
+                 "passed": False},
+                {"scores": {"data_consistency": 8, "goal_alignment": 8,
+                           "actionability": 8, "overall": 8.0},
+                 "passed": True},
+            ]
+            async def mock_evaluate(*args, **kwargs):
+                idx = reflect_call_count[0]
+                reflect_call_count[0] += 1
+                return reflect_scores[min(idx, len(reflect_scores) - 1)]
+            eng.reflection_engine.evaluate = mock_evaluate
+
             events = []
-            async for event in eng.run_pipeline("帮我分析法式茶歇裙", "test_retry"):
+            async for event in eng.run_pipeline("帮我分析法式茶歇裙轮重试", "test_retry"):
                 events.append(event)
 
         retry_events = [e for e in events if e.get("phase") == "reflect_retry"]

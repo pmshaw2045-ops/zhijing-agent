@@ -446,7 +446,7 @@ async function sendMessageWithClarify(answer, sid) {
         try {
           const event = JSON.parse(line.slice(6));
           handleSSEEvent(event, reportBubble);
-        } catch(e) {}
+        } catch(e) { console.warn('SSE parse warning:', e.message); }
       }
     }
   } catch (err) {
@@ -501,7 +501,7 @@ async function sendMessage() {
         try {
           const event = JSON.parse(line.slice(6));
           handleSSEEvent(event, reportBubble);
-        } catch(e) {}
+        } catch(e) { console.warn('SSE parse warning:', e.message); }
       }
     }
   } catch (err) {
