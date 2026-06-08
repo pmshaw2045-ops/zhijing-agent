@@ -7,6 +7,7 @@ import json
 import os
 import time
 import threading
+import asyncio
 from pathlib import Path
 from typing import Optional, Callable, Coroutine, Any
 import logging
@@ -23,6 +24,7 @@ class MemorySystem:
     def __init__(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+        self._async_lock = asyncio.Lock()
 
         # 存储后端：STORE_BACKEND=sqlite 时使用 SQLite，否则使用 JSON
         self._backend = None
@@ -222,9 +224,11 @@ class MemorySystem:
         try:
             new_summary = await llm_chat_fn(summary_prompt)
             if new_summary and len(new_summary) > 20:
-                session["summary"] = new_summary.strip()[:500]
-                session["summary_at_index"] = len(overflow)
-                self.mark_dirty()
+                async with self._async_lock:
+                    session = self._get_session(session_id)
+                    session["summary"] = new_summary.strip()[:500]
+                    session["summary_at_index"] = len(overflow)
+                    self.mark_dirty()
                 return True
         except Exception:
             pass
