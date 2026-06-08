@@ -20,11 +20,13 @@ try:
     from .memory import MemorySystem
     from .auth import AuthMiddleware, get_auth_status
     from .observability import start_request, finish_request, get_metrics
+    from .logging_setup import setup_logging, set_request_context, get_trace_id
 except ImportError:
     from agent_engine import AgentEngine
     from memory import MemorySystem
     from auth import AuthMiddleware, get_auth_status
     from observability import start_request, finish_request, get_metrics
+    from logging_setup import setup_logging, set_request_context, get_trace_id
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(levelname)s: %(message)s')
 logger = logging.getLogger("server")
@@ -39,6 +41,7 @@ FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from .config import APP_ENV, IS_PROD
+    setup_logging()
     logger.info(f"织镜 ZHÌJÌNG Agent 启动 (env={APP_ENV})")
     if IS_PROD:
         logger.info("  ⚠️  PRODUCTION 模式：认证已启用")
@@ -111,6 +114,7 @@ async def chat(request: Request):
     logger.info(f"📩 [{session_id}] {message[:60]}... (mode={mode})")
     request_start = time.time()
     start_request()
+    set_request_context(f"req_{session_id}_{int(request_start*1000)%100000}", session_id)
 
     async def generate():
         cancelled = False
