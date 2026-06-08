@@ -506,10 +506,10 @@ async function sendMessage() {
   if (lastError) {
     reportBubble.querySelector('.msg-bubble').innerHTML = '<span style="color:#c00">错误: ' + lastError.message + '</span>';
     clog('error', 'Pipeline失败: ' + lastError.message);
-  } finally {
-    isProcessing = false;
-    btnSend.disabled = false;
   }
+
+  isProcessing = false;
+  btnSend.disabled = false;
 }
 
 // =====================================================================
