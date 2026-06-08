@@ -786,6 +786,7 @@ function handleSSEEvent(event, bubble) {
       try {
         var json = JSON.parse(content);
         bubbleEl.innerHTML = renderReport(json);
+        void bubbleEl.offsetHeight; // 强制重排，修复快速事件批量处理时气泡宽度不展开的问题
       } catch(e) {
         // 非标准 JSON，回退到 HTML
         bubbleEl.innerHTML = content;
