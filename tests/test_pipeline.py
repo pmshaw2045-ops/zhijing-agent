@@ -86,9 +86,9 @@ class TestDecomposeFlow:
     @pytest.mark.asyncio
     async def test_goal_to_text_conversion(self):
         """Goal dict → 自然语言"""
-        from decompose_engine import _goal_to_text
+        from intent import goal_to_text
 
-        result = _goal_to_text({"品类": "连衣裙", "风格": "法式", "时间范围": "2026夏季"})
+        result = goal_to_text({"品类": "连衣裙", "风格": "法式", "时间范围": "2026夏季"})
         assert "品类：连衣裙" in result
         assert "风格：法式" in result
         assert "{" not in result  # 不应含JSON

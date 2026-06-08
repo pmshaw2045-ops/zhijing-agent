@@ -6,9 +6,11 @@ import logging
 
 try:
     from .llm_client import chat, extract_json, MODEL_CHAT
+    from .intent import goal_to_text
     from .report_pipeline import TARGET_SCORE
 except ImportError:
     from llm_client import chat, extract_json, MODEL_CHAT
+    from intent import goal_to_text
     from report_pipeline import TARGET_SCORE
 
 logger = logging.getLogger(__name__)
@@ -22,7 +24,7 @@ class ReflectionEngine:
         report_sample = report[:4000] if report else ""
         return f"""你是AI Agent质检专家。反思以下分析报告的质量。
 
-原始需求: {json.dumps(goal, ensure_ascii=False)[:400]}
+原始需求: {goal_to_text(goal)}
 报告摘要 (前2000字符): {report_sample}
 
 从三个维度评分（每项0-10）并输出JSON:

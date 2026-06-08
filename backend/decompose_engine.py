@@ -10,10 +10,12 @@ import logging
 try:
     from .llm_client import chat, extract_json, MODEL_PRO
     from .intent_registry import INTENT_REGISTRY, get_all_names, get_decompose_rule
+    from .intent import goal_to_text
     from .tools import AVAILABLE_TOOLS
 except ImportError:
     from llm_client import chat, extract_json, MODEL_PRO
     from intent_registry import INTENT_REGISTRY, get_all_names, get_decompose_rule
+    from intent import goal_to_text
     from tools import AVAILABLE_TOOLS
 
 logger = logging.getLogger(__name__)
@@ -38,7 +40,7 @@ class DecomposeEngine:
     你是任务规划专家。根据用户意图和可用工具，自主设计最优DAG任务流。
 
     意图类型: {intent_type}
-    用户目标: {_goal_to_text(goal)}
+    用户目标: {goal_to_text(goal)}
 
     可用工具: {tools_list}
 
@@ -105,21 +107,3 @@ class DecomposeEngine:
         return result
 
 
-def _goal_to_text(goal: dict) -> str:
-    """将结构化 goal dict 转为自然语言，节约 token 且更易读"""
-    parts = []
-    for key, label in [
-        ("品类", None), ("分析对象", None), ("风格", None),
-        ("时间范围", None), ("目标平台", "平台"), ("核心关注点", "关注"),
-        ("价格带", None), ("面料", None),
-    ]:
-        val = goal.get(key, "")
-        if val and str(val).strip() and str(val).strip() not in ("null", "未指定", "None"):
-            v = str(val).strip()
-            parts.append(f"{label or key}：{v}")
-    brands = goal.get("竞品品牌", [])
-    if brands and isinstance(brands, list) and len(brands) > 0:
-        parts.append(f"品牌：{'、'.join(brands)}")
-    return "，".join(parts) if parts else str(goal)[:200]
-
-    

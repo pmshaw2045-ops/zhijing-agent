@@ -11,8 +11,10 @@ from typing import Optional, List
 
 try:
     from .llm_client import chat, chat_stream, MODEL_CHAT
+    from .intent import goal_to_text
 except ImportError:
     from llm_client import chat, chat_stream, MODEL_CHAT
+    from intent import goal_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +105,7 @@ JSON规则：
         return f"""你是服饰电商选品分析师。基于搜索数据生成选品分析JSON报告。
 
 任务: {intent_type}
-需求: {json.dumps(goal, ensure_ascii=False, indent=2)[:600]}
+用户需求: {goal_to_text(goal)}
 {memory}{data}{extra}
 
 报告结构（按顺序填入 sections 数组）：
@@ -120,7 +122,7 @@ JSON规则：
         return f"""你是服饰电商竞品分析师。基于搜索数据生成竞品对标JSON报告。
 
 任务: {intent_type}
-需求: {json.dumps(goal, ensure_ascii=False, indent=2)[:600]}
+用户需求: {goal_to_text(goal)}
 {memory}{data}{extra}
 
 报告结构（按顺序）：
@@ -138,7 +140,7 @@ JSON规则：
         return f"""你是服饰电商趋势分析师。生成趋势洞察JSON报告。
 
 任务: {intent_type}
-需求: {json.dumps(goal, ensure_ascii=False, indent=2)[:600]}
+用户需求: {goal_to_text(goal)}
 {memory}{data}{extra}
 
 报告结构：
@@ -154,7 +156,7 @@ JSON规则：
         return f"""你是资深电商文案策划。直接生成商品文案JSON报告，不做任何市场分析。
 
 任务: {intent_type}
-商品信息: {json.dumps(goal, ensure_ascii=False, indent=2)[:400]}
+商品信息: {goal_to_text(goal)}
 {data}
 
 报告结构：
@@ -170,7 +172,7 @@ JSON规则：
         return f"""你是服饰电商定价策略师。生成定价策略JSON报告。
 
 任务: {intent_type}
-需求: {json.dumps(goal, ensure_ascii=False, indent=2)[:400]}
+用户需求: {goal_to_text(goal)}
 {memory}{data}{extra}
 
 报告结构：
@@ -186,7 +188,7 @@ JSON规则：
         return f"""你是服饰电商运营专家。生成上新排期JSON报告。
 
 任务: {intent_type}
-需求: {json.dumps(goal, ensure_ascii=False, indent=2)[:400]}
+用户需求: {goal_to_text(goal)}
 {memory}{data}{extra}
 
 报告结构：
