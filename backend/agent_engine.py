@@ -485,74 +485,7 @@ class AgentEngine:
         yield {"type": "summary", "data": get_metrics()}
         yield {"type": "done"}
 
-    # ====== Phase 1: LLM意图识别 (flash, P4记忆注入) ======
-    def _build_decompose_prompt(self, intent: dict, detected_mode: str) -> str:
-        goal = intent.get("goal", {})
-        intent_type = intent.get("intent_type", "分析")
-        tools_list = ", ".join([t["name"] for t in AVAILABLE_TOOLS])
-        prompt = f"""你是任务规划专家。根据用户意图和可用工具，自主设计最优DAG任务流。
-
-意图类型: {intent_type}
-用户目标: {json.dumps(goal, ensure_ascii=False)[:500]}
-
-可用工具: {tools_list}
-
-工具选择规则:
-- bocha_search: 中文搜索首选，覆盖淘宝/天猫/京东商品页、中文新闻、百科。服饰电商场景默认用bocha_search
-- web_search: 英文搜索(Tavily)，仅用于需要Google/国际数据时
-- 其他工具按需选择
-
-规则:
-- 不同意图类型需要不同任务结构（不要所有场景都用相同DAG）
-"""
-        # 从 registry 动态生成各意图的拆解规则
-        for mode, name in get_all_names().items():
-            rule = get_decompose_rule(mode)
-            prompt += f"- {name}: {rule}\n"
-        prompt += """- 服饰电商中文场景，搜索任务默认使用bocha_search
-
-输出JSON:
-{{"tasks":[{{"id":"T1","desc":"任务描述(简短)","tool":"工具名","deps":[],"parallel_group":0}}],
- "dag_structure":"结构描述",
- "parallel_groups":[["T2","T3"]],
- "rationale":"为什么这样设计DAG"}}
-
-每个任务绑定一个工具, 无依赖可并行, 3-6个任务。可参考模板但要根据实际目标调整。
-只输出JSON。"""
-        return prompt
-    async def _llm_decompose(self, intent: dict, detected_mode: str, prompt: str = None) -> dict:
-        if prompt is None:
-            prompt = self._build_decompose_prompt(intent, detected_mode)
-        template = self.dag_loader.load(detected_mode) or self.dag_loader.load("selection")
-        raw = await chat(prompt, model=MODEL_PRO, max_tokens=2000)
-        result = extract_json(raw)
-
-        # 标准化 task 字段名
-        if result and "tasks" in result:
-            normalized = []
-            for t in result["tasks"]:
-                normalized.append({
-                    "id": str(t.get("id", "")),
-                    "desc": t.get("desc", t.get("description", "")),
-                    "tool": t.get("tool", "web_search"),
-                    "deps": t.get("deps", t.get("depends_on", [])),
-                    "parallel_group": t.get("parallel_group", t.get("group", 0)),
-                })
-            result["tasks"] = normalized
-
-        if not result or "tasks" not in result:
-            # fallback: 使用该意图的默认模板
-            return {
-                "tasks": template["tasks"],
-                "dag_structure": template["dag_structure"],
-                "parallel_groups": [["T2", "T3", "T4"]],
-                "_fallback": True,
-            }
-
-        result["_llm_generated"] = True
-        result["_fallback"] = False
-        return result
-    # ====== Phase 4-5: 工具映射 + 执行 (P0加持) ======
+    # ====== 工具映射 + 执行
     def _map_tools(self, dag):
         tool_names = [t["name"] for t in AVAILABLE_TOOLS]
         mappings = []
