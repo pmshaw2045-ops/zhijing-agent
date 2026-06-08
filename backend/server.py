@@ -102,6 +102,20 @@ async def console_js():
                         headers={"Cache-Control": "no-cache"})
 
 
+@app.get("/sse.js")
+async def sse_js():
+    return HTMLResponse((FRONTEND_DIR / "sse.js").read_text(encoding="utf-8"),
+                        media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache"})
+
+
+@app.get("/handler.js")
+async def handler_js():
+    return HTMLResponse((FRONTEND_DIR / "handler.js").read_text(encoding="utf-8"),
+                        media_type="application/javascript",
+                        headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/render.js")
 async def render_js():
     return HTMLResponse((FRONTEND_DIR / "render.js").read_text(encoding="utf-8"),
