@@ -193,6 +193,21 @@ Console 面板:
 | `/api/memory/{id}` | GET | ❌ | 会话记忆状态 |
 | `/api/memory/{id}/conversation` | GET | ❌ | 会话历史 |
 
+**认证机制**：
+
+Token 从前端到后端的完整链路：
+
+```
+1. 服务端 server.py 渲染 index.html 时检查 API_TOKEN
+2. 若非默认值（change-me-to-a-random-string），在 HTML 中注入：
+   <script>const API_TOKEN='***';</script>
+3. 前端 sse.js 在 fetch /api/chat 时自动附带：
+   Authorization: Bearer *** Auth 中间件校验 token
+```
+
+- Dev 模式（`API_TOKEN` 未设置或值为默认 `change-me-to-a-random-string`）：跳过认证，静态文件不受 Auth 拦截（已在 `_PUBLIC_PATHS` 白名单）
+- 生产模式（自定义 `API_TOKEN`）：CSS/JS 及 `/api/health` 等公开路径免认证，`/api/chat` 需 Bearer Token
+
 ### 2.7 关键决策记录
 
 | 决策 | 原因 |
