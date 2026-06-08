@@ -22,21 +22,23 @@ _RATE_LIMIT_RPM = int(os.environ.get("RATE_LIMIT_RPM", "60" if _DEV_MODE else "3
 
 
 def _load_keys() -> dict[str, dict]:
-    """加载 API 密钥：优先 API_KEYS JSON，其次 API_TOKEN 单key，dev模式默认key"""
-    default_dev = {"zhijing-dev-token-2026": {"name": "dev", "rate_limit": 60}}
+    """加载 API 密钥。dev 模式生成随机 token，避免硬编码。"""
     raw = os.environ.get("API_KEYS", "")
     if raw:
         try:
             return json.loads(raw)
         except json.JSONDecodeError:
-            # 逗号分隔的简单格式: "key1,key2"
             return {k.strip(): {"name": f"user_{i}", "rate_limit": _RATE_LIMIT_RPM}
                     for i, k in enumerate(raw.split(",")) if k.strip()}
     token = os.environ.get("API_TOKEN", "")
     if token:
         return {token: {"name": "default", "rate_limit": _RATE_LIMIT_RPM}}
     if _DEV_MODE:
-        return default_dev
+        import secrets
+        dev_token = secrets.token_urlsafe(16)
+        logger.warning(f"🔑 DEV模式 — 自动生成API_TOKEN: {dev_token}")
+        logger.warning(f"   设置环境变量: export API_TOKEN={dev_token}")
+        return {dev_token: {"name": "dev_auto", "rate_limit": _RATE_LIMIT_RPM}}
     return {}
 
 
