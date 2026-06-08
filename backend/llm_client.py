@@ -7,9 +7,11 @@ LLM Client v7: 直连 DeepSeek API + 模型分级 + 统一配置
 """
 import json
 import re
+import time
+import asyncio
 import logging
 import httpx
-from openai import AsyncOpenAI, OpenAI
+from openai import AsyncOpenAI, OpenAI, APIStatusError, APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
 
 try:
     from .config import (
@@ -28,6 +30,61 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# ====== 重试配置 ======
+_MAX_RETRIES = 3
+_RETRY_BASE_DELAY = 1.0  # 秒，指数退避: 1→2→4
+
+
+def _is_retryable(error: Exception) -> bool:
+    """判断异常是否可重试（网络/超时/500/429），排除请求错误/auth错误"""
+    if isinstance(error, (APIConnectionError, APITimeoutError, InternalServerError, RateLimitError)):
+        return True
+    if isinstance(error, httpx.TimeoutException):
+        return True
+    if isinstance(error, httpx.ConnectError):
+        return True
+    # APIStatusError with 500+ or 429
+    if isinstance(error, APIStatusError):
+        return error.status_code >= 500 or error.status_code == 429
+    # asyncio.TimeoutError (from asyncio.wait_for)
+    if isinstance(error, asyncio.TimeoutError):
+        return True
+    return False
+
+
+async def _retry_async(fn, model: str):
+    """异步重试包装器，指数退避"""
+    last_error = None
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            return await fn()
+        except Exception as e:
+            last_error = e
+            if not _is_retryable(e) or attempt >= _MAX_RETRIES:
+                raise
+            delay = _RETRY_BASE_DELAY * (2 ** (attempt - 1))
+            logger.warning(f"LLM API retry {attempt}/{_MAX_RETRIES} " +
+                           f"(model={model}, error={type(e).__name__}), waiting {delay:.1f}s")
+            await asyncio.sleep(delay)
+    raise last_error  # should not reach here
+
+
+def _retry_sync(fn, model: str):
+    """同步重试包装器"""
+    last_error = None
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            return fn()
+        except Exception as e:
+            last_error = e
+            if not _is_retryable(e) or attempt >= _MAX_RETRIES:
+                raise
+            delay = _RETRY_BASE_DELAY * (2 ** (attempt - 1))
+            logger.warning(f"LLM API retry {attempt}/{_MAX_RETRIES} " +
+                           f"(model={model}, error={type(e).__name__}), waiting {delay:.1f}s")
+            time.sleep(delay)
+    raise last_error
+
 # ====== 客户端初始化 ======
 _async_client = AsyncOpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
 _sync_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
@@ -44,20 +101,23 @@ else:
 
 async def chat(prompt: str, model: str = MODEL_FLASH, max_tokens: int = 1024,
                json_mode: bool = False) -> str:
-    """异步调用 DeepSeek Chat API"""
+    """异步调用 DeepSeek Chat API，含 3 次重试 + 指数退避"""
     kwargs = dict(model=model, messages=[{"role": "user", "content": prompt}],
                   max_tokens=max_tokens, temperature=0.7)
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
     try:
-        resp = await _async_client.chat.completions.create(**kwargs)
+        resp = await _retry_async(
+            lambda: _async_client.chat.completions.create(**kwargs),
+            model
+        )
         output = resp.choices[0].message.content.strip()
         # 估算 token 用量：中文≈1.5字符/token，粗略用字符数/2
         est_tokens = len(prompt) // 2 + len(output) // 2
         record_tokens(model, est_tokens)
         return output
     except Exception as e:
-        logger.error(f"DeepSeek API error (async, model={model}): {e}")
+        logger.error(f"DeepSeek API error (async, model={model}, after retries): {e}")
         raise
 
 
@@ -79,20 +139,23 @@ async def chat_stream(prompt: str, model: str = MODEL_CHAT, max_tokens: int = 30
 
 
 def chat_sync(prompt: str, model: str = MODEL_FLASH, max_tokens: int = 1024, timeout: int = 30) -> str:
-    """同步调用 DeepSeek Chat API — 供工具层使用"""
+    """同步调用 DeepSeek Chat API — 供工具层使用，含 3 次重试"""
     try:
-        resp = _sync_client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            temperature=0.3,
+        resp = _retry_sync(
+            lambda: _sync_client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=max_tokens,
+                temperature=0.3,
+            ),
+            model
         )
         output = resp.choices[0].message.content.strip()
         est_tokens = len(prompt) // 2 + len(output) // 2
         record_tokens(model, est_tokens)
         return output
     except Exception as e:
-        logger.error(f"DeepSeek API error (sync, model={model}): {e}")
+        logger.error(f"DeepSeek API error (sync, model={model}, after retries): {e}")
         raise
 
 

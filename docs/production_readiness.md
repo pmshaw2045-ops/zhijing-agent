@@ -136,14 +136,14 @@
 
 | # | 严重度 | 问题 | 涉及文件 | 状态 |
 |---|---|---|---|---|
-| P0-1 | 🔴 | llm_client.chat() 无重试 | llm_client.py | 📋 |
-| P0-2 | 🔴 | SSE 端点无统一异常处理 | server.py | 📋 |
+| P0-1 | 🔴 | llm_client.chat() 无重试 | llm_client.py | ✅ |
+| P0-2 | 🔴 | SSE 端点无统一异常处理 | server.py | ✅ |
 | P0-3 | 🟡 | Token 计数粗略估算（/2） | llm_client.py | 📋 |
-| P1-1 | 🟡 | index_original.html 与 index.html 重复 | frontend/ | 📋 |
-| P1-2 | 🟡 | app.js 870行未使用 | frontend/ | 📋 |
-| P1-3 | 🟡 | report_*.html 样本报告在仓库 | frontend/ | 📋 |
-| P1-4 | 🟡 | 旧版 _build_decompose_prompt/_llm_decompose 未删除 | agent_engine.py | 📋 |
-| P1-5 | 🟡 | 前端空 catch(e) {} 仍有 4 处 | frontend/index_original.html | 📋 |
+| P1-1 | 🟡 | index_original.html 与 index.html 重复 | frontend/ | ✅ |
+| P1-2 | 🟡 | app.js 870行未使用 | frontend/ | ✅ |
+| P1-3 | 🟡 | report_*.html 样本报告在仓库 | frontend/ | ✅ |
+| P1-4 | 🟡 | 旧版 _build_decompose_prompt/_llm_decompose 未删除 | agent_engine.py | ✅ |
+| P1-5 | 🟡 | 前端空 catch(e) {} 仍有 4 处 | frontend/index.html | ✅ |
 | P2-1 | 🟢 | 无结构化日志 | 全局 | 📋 |
 | P2-2 | 🟢 | requirements.txt 无精确版本 | requirements.txt | 📋 |
 | P2-3 | 🟢 | dev 默认 token 硬编码 | auth.py | 📋 |

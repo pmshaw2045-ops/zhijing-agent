@@ -789,6 +789,7 @@ function handleSSEEvent(event, bubble) {
         void bubbleEl.offsetHeight;
         bubbleEl.style.flex = '1';
       } catch(e) {
+        console.warn('JSON parse failed, falling back to HTML:', e.message);
         // 非标准 JSON，回退到 HTML
         bubbleEl.innerHTML = content;
         fixReportLayout(bubbleEl);
@@ -809,7 +810,7 @@ function handleSSEEvent(event, bubble) {
         document.getElementById('memDisplay').textContent =
           '短' + (d.stats?.short_term_count || 0) + '条 · 工作:' + (d.working_memory?.last_intent || '-');
       })
-      .catch(function() {});
+      .catch(function(e) { console.warn('Memory display fetch failed:', e); });
 
   } else if (type === 'error') {
     clog('error', '错误: ' + event.message);

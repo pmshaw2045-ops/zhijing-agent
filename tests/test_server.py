@@ -233,7 +233,7 @@ class TestChatSSE:
         assert len(events) >= 1
         error_event = next((e for e in events if e.get("type") == "error"), None)
         assert error_event is not None
-        assert "LLM API 超时" in error_event.get("message", "")
+        assert error_event.get("message") == "服务内部错误，请重试"
 
     @pytest.mark.asyncio
     async def test_session_id_propagation(self):

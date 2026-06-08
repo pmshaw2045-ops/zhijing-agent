@@ -123,11 +123,11 @@ async def chat(request: Request):
                 yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0)
         except Exception as e:
-            logger.error(f"Pipeline error: {e}", exc_info=True)
-            finish_request(success=False, latency_ms=(time.time()-request_start)*1000)
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
-            return
-        finish_request(success=True, cancelled=cancelled, latency_ms=(time.time()-request_start)*1000)
+            logger.error(f"Pipeline error [{session_id}]: {type(e).__name__}: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': '服务内部错误，请重试'}, ensure_ascii=False)}\n\n"
+        finally:
+            finish_request(success=not cancelled, cancelled=cancelled,
+                         latency_ms=(time.time()-request_start)*1000)
 
     return StreamingResponse(
         generate(),
