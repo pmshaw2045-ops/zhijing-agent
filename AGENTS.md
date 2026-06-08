@@ -130,7 +130,6 @@ FastAPI Server (backend/server.py)
 ```
 /Users/admin/Desktop/test/fashion-agent-v2/
 ├── AGENTS.md              ← 本文件
-├── PRD.md                 ← 产品需求文档
 ├── docs/                  ← 文档目录
 │   ├── product_summary.md     产品与技术总结
 │   ├── product_roadmap.md     产品路线图
