@@ -6,8 +6,8 @@
 <p align="center">
   <a href="https://github.com/pmshaw2045-ops/zhijing-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python">
-  <img src="https://img.shields.io/badge/tests-130%20passed-brightgreen.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/coverage-72%25-yellow.svg" alt="Coverage">
+  <img src="https://img.shields.io/badge/tests-134%20passed-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/coverage-76%25-yellow.svg" alt="Coverage">
 </p>
 
 ***
@@ -48,7 +48,7 @@ docker build -t zhijing .
 docker run -p 8899:8899 --env-file .env zhijing
 ```
 
----
+***
 
 ## 测试
 
@@ -60,9 +60,10 @@ make test
 make test-integration
 ```
 
----
+***
 
 ## 截图
+
 ![alt text](docs/screenshots/image.png)
 ![alt text](docs/screenshots/image-1.png)
 ![alt text](docs/screenshots/image-2.png)
@@ -80,9 +81,11 @@ make test-integration
          → ReflectionEngine (质量审查, 7 分阈值)
          → SSE 流式返回
 ```
+
+```
 zhijing-agent/
 ├── AGENTS.md              项目主文档（AI Agent 入口）
-├── backend/               28 模块 / 4,100+ 行
+├── backend/               20 模块 / 4,300+ 行
 │   ├── agent_engine.py    Pipeline 编排
 │   ├── intent_registry.py 意图元数据中心 (SSOT)
 │   ├── memory.py          五层记忆系统
@@ -97,11 +100,11 @@ zhijing-agent/
 │   ├── sse.js             SSE 流式 + 重试
 │   ├── handler.js         SSE 事件处理 + layout
 │   └── console.js         Console 日志
-├── tests/                 9 文件 / 130 项测试
-├── docs/                  文档目录
+├── tests/                 13 文件 / 134 项测试
+├── docs/                  13 文档
 │   ├── product_summary.md    产品与技术总结
 │   ├── production_readiness.md  生产就绪度评估
-│   ├── frontend_split_analysis.md  前端拆分分析
+│   ├── config_guide.md        配置指南
 │   └── archive/              历史存档
 └── .github/workflows/     CI (pytest + ruff)
 ```
@@ -110,15 +113,15 @@ zhijing-agent/
 
 ## API
 
- 端点                                  | 说明                   |
- ----------------------------------- | -------------------- |
- `GET /`                             | 前端页面                 |
- `POST /api/chat`                    | SSE 流式对话（核心接口）       |
- `GET /api/health`                   | 健康检查                 |
- `GET /api/metrics`                  | Token 用量 / 请求统计      |
- `GET /api/memory/{id}`              | 会话记忆状态               |
- `GET /api/memory/{id}/conversation` | 会话历史                 |
- `GET /docs`                         | OpenAPI / Swagger 文档 |
+| 端点                                  | 说明                   |
+| ----------------------------------- | -------------------- |
+| `GET /`                             | 前端页面                 |
+| `POST /api/chat`                    | SSE 流式对话（核心接口）       |
+| `GET /api/health`                   | 健康检查                 |
+| `GET /api/metrics`                  | Token 用量 / 请求统计      |
+| `GET /api/memory/{id}`              | 会话记忆状态               |
+| `GET /api/memory/{id}/conversation` | 会话历史                 |
+| `GET /docs`                         | OpenAPI / Swagger 文档 |
 
 详见 [AGENTS.md](AGENTS.md) 或直接访问 `http://localhost:8899/docs`。
 
