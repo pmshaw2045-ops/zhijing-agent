@@ -340,3 +340,13 @@ function buildMemoryPanel(panel, d) {
   }
   panel.innerHTML = html;
 }
+
+// Console 展开/收起
+var btnToggleConsole = document.getElementById('btnToggleConsole');
+var consolePanel = document.querySelector('.console-panel');
+if (btnToggleConsole && consolePanel) {
+  btnToggleConsole.addEventListener('click', function() {
+    consolePanel.classList.toggle('collapsed');
+    btnToggleConsole.textContent = consolePanel.classList.contains('collapsed') ? '◀' : '☰';
+  });
+}

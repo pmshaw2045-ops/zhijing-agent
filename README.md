@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/coverage-72%25-yellow.svg" alt="Coverage">
 </p>
 
----
+***
 
 ## 概述
 
@@ -18,7 +18,7 @@
 
 后端**真实调用 DeepSeek LLM**，不是固定模板的伪 demo。
 
----
+***
 
 ## 快速开始
 
@@ -48,16 +48,19 @@ docker build -t zhijing .
 docker run -p 8899:8899 --env-file .env zhijing
 ```
 
----
+***
 
 ## 截图
 
 > *TODO: 添加产品截图和演示 GIF。建议用:*
+>
 > - *选品分析报告展示（指标卡片 + 柱状图 + 表格）*
+>
+>   <br />
 > - *Console 面板展示 Pipeline 实时状态*
 > - *竞品对标 SWOT 矩阵*
 
----
+***
 
 ## 架构
 
@@ -73,36 +76,36 @@ docker run -p 8899:8899 --env-file .env zhijing
 
 8 个 Phase Pipeline，每个 Phase 由独立引擎处理。所有意图元数据集中注册在 `IntentRegistry`，新增意图只需加一行配置。
 
----
+***
 
 ## 功能
 
-| 意图类型 | 说明 | 适用工具 |
-|---|---|---|
-| 单品选品分析 | 市场趋势 + 价格带 + 竞品格局 | 7 个工具 |
-| 多品牌竞品对标 | 双品牌对比 + SWOT | 4 个工具 |
-| 品类趋势洞察 | 流行方向 + 面料/廓形/色彩 | 4 个工具 |
-| 商品文案生成 | 淘宝/抖音/小红书文案 | 3 个工具 |
-| 定价策略分析 | 价格分布 + 成本利润 | 5 个工具 |
-| 上新排期建议 | 季节曲线 + 大促日历 | 3 个工具 |
-| 文生图 | 豆包 Seedream 生成服装图 | 1 个工具 |
+| 意图类型    | 说明                | 适用工具  |
+| ------- | ----------------- | ----- |
+| 单品选品分析  | 市场趋势 + 价格带 + 竞品格局 | 7 个工具 |
+| 多品牌竞品对标 | 双品牌对比 + SWOT      | 4 个工具 |
+| 品类趋势洞察  | 流行方向 + 面料/廓形/色彩   | 4 个工具 |
+| 商品文案生成  | 淘宝/抖音/小红书文案       | 3 个工具 |
+| 定价策略分析  | 价格分布 + 成本利润       | 5 个工具 |
+| 上新排期建议  | 季节曲线 + 大促日历       | 3 个工具 |
+| 文生图     | 豆包 Seedream 生成服装图 | 1 个工具 |
 
----
+***
 
 ## 技术栈
 
-| 层 | 选型 |
-|---|---|
-| 后端 | Python 3.11 + FastAPI |
-| LLM | DeepSeek v4-pro / chat |
-| 文生图 | 豆包 Seedream 5.0 |
-| 搜索 | 博查 BochaAI（中文）+ Tavily（英文） |
-| 前端 | 原生 HTML/CSS/JS（模块化：6 文件/100 行骨架） |
-| 存储 | JSON 文件（~400 会话，SQLite 到规模再切换） |
-| 部署 | Docker + docker-compose + GitHub Actions CI |
-| 测试 | pytest 130 项 + Jest 14 项，覆盖率 72% |
+| 层   | 选型                                          |
+| --- | ------------------------------------------- |
+| 后端  | Python 3.11 + FastAPI                       |
+| LLM | DeepSeek v4-pro / chat                      |
+| 文生图 | 豆包 Seedream 5.0                             |
+| 搜索  | 博查 BochaAI（中文）+ Tavily（英文）                  |
+| 前端  | 原生 HTML/CSS/JS（模块化：6 文件/100 行骨架）            |
+| 存储  | JSON 文件（\~400 会话，SQLite 到规模再切换）             |
+| 部署  | Docker + docker-compose + GitHub Actions CI |
+| 测试  | pytest 130 项 + Jest 14 项，覆盖率 72%            |
 
----
+***
 
 ## 项目结构
 
@@ -133,23 +136,23 @@ fashion-agent-v2/
 └── .github/workflows/     CI (pytest + ruff)
 ```
 
----
+***
 
 ## API
 
-| 端点 | 说明 |
-|---|---|
-| `GET /` | 前端页面 |
-| `POST /api/chat` | SSE 流式对话（核心接口） |
-| `GET /api/health` | 健康检查 |
-| `GET /api/metrics` | Token 用量 / 请求统计 |
-| `GET /api/memory/{id}` | 会话记忆状态 |
-| `GET /api/memory/{id}/conversation` | 会话历史 |
-| `GET /docs` | OpenAPI / Swagger 文档 |
+| 端点                                  | 说明                   |
+| ----------------------------------- | -------------------- |
+| `GET /`                             | 前端页面                 |
+| `POST /api/chat`                    | SSE 流式对话（核心接口）       |
+| `GET /api/health`                   | 健康检查                 |
+| `GET /api/metrics`                  | Token 用量 / 请求统计      |
+| `GET /api/memory/{id}`              | 会话记忆状态               |
+| `GET /api/memory/{id}/conversation` | 会话历史                 |
+| `GET /docs`                         | OpenAPI / Swagger 文档 |
 
 详见 [AGENTS.md](AGENTS.md) 或直接访问 `http://localhost:8899/docs`。
 
----
+***
 
 ## 协议
 
