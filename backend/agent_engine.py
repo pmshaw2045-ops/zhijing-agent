@@ -524,7 +524,7 @@ class AgentEngine:
         if prompt is None:
             prompt = self._build_decompose_prompt(intent, detected_mode)
         template = self.dag_loader.load(detected_mode) or self.dag_loader.load("selection")
-        raw = await chat(prompt, model=MODEL_PRO, max_tokens=1200, json_mode=True)
+        raw = await chat(prompt, model=MODEL_PRO, max_tokens=2000)
         result = extract_json(raw)
 
         # 标准化 task 字段名
