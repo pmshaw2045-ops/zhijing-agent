@@ -15,7 +15,8 @@ importlib.reload(config)
 
 from config import (
     DEEPSEEK_API_KEY, ARK_API_KEY, TAVILY_API_KEY, BOCHA_API_KEY,
-    APP_ENV, IS_PROD, diagnostics
+    APP_ENV, IS_PROD, diagnostics,
+    LLM_API_KEY, LLM_MODEL_FLASH, LLM_MODEL_PRO, LLM_MODEL_CHAT,
 )
 
 
@@ -38,5 +39,20 @@ def test_diagnostics_struct():
     d = diagnostics()
     assert "env" in d
     assert "is_prod" in d
-    assert "deepseek" in d
-    assert isinstance(d["deepseek"], bool)
+    assert "llm" in d
+    assert isinstance(d["llm"], bool)
+    assert "models" in d
+    assert "flash" in d["models"]
+
+
+def test_llm_api_key_backward_compat():
+    """DEEPSEEK_API_KEY 作为向后兼容别名"""
+    assert LLM_API_KEY == "test-key-ds"
+    assert DEEPSEEK_API_KEY == LLM_API_KEY
+
+
+def test_model_config():
+    """模型配置默认值"""
+    assert LLM_MODEL_FLASH == "deepseek-chat"
+    assert LLM_MODEL_PRO == "deepseek-v4-pro"
+    assert LLM_MODEL_CHAT == "deepseek-chat"

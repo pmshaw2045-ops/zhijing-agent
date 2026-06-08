@@ -21,12 +21,14 @@ try:
     from .auth import AuthMiddleware, get_auth_status
     from .observability import start_request, finish_request, get_metrics
     from .logging_setup import setup_logging, set_request_context, get_trace_id
+    from .config import MODEL_FLASH, MODEL_PRO
 except ImportError:
     from agent_engine import AgentEngine
     from memory import MemorySystem
     from auth import AuthMiddleware, get_auth_status
     from observability import start_request, finish_request, get_metrics
     from logging_setup import setup_logging, set_request_context, get_trace_id
+    from config import MODEL_FLASH, MODEL_PRO
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(levelname)s: %(message)s')
 logger = logging.getLogger("server")
@@ -178,7 +180,7 @@ async def health():
     return {
         "status": "ok",
         "engine": "ready",
-        "models": {"flash": "deepseek-v4-flash", "pro": "deepseek-v4-pro"},
+        "models": {"flash": MODEL_FLASH, "pro": MODEL_PRO},
         "sessions": len(memory_system._store.get("sessions", {})),
         "auth": get_auth_status(),
     }

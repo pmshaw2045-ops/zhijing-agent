@@ -22,24 +22,24 @@
 
 ## 快速开始
 
-```bash
-# 1. 克隆
-git clone https://github.com/YOUR_USERNAME/fashion-agent-v2.git
-cd fashion-agent-v2
-
-# 2. 配置密钥
-cp .env.example .env
-# 编辑 .env 填入 DeepSeek/Tavily/博查 密钥
-
-# 3. 安装依赖
-pip install -r backend/requirements.txt
-
-# 4. 启动
-python3 -m uvicorn backend.server:app --host 0.0.0.0 --port 8899
-
-# 5. 打开浏览器
-open http://localhost:8899
-```
+|```bash
+|# 1. 克隆
+|git clone https://github.com/YOUR_USERNAME/fashion-agent-v2.git
+|cd fashion-agent-v2
+|
+|# 2. 配置密钥（支持任意 OpenAI 兼容 API）
+|cp .env.example .env
+|# 编辑 .env，至少填入 LLM_API_KEY
+|
+|# 3. 安装依赖
+|pip install -r backend/requirements.txt
+|
+|# 4. 启动
+|python3 -m uvicorn backend.server:app --host 0.0.0.0 --port 8899
+|
+|# 5. 打开浏览器
+|open http://localhost:8899
+|```
 
 ### Docker
 

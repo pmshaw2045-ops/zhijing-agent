@@ -15,14 +15,14 @@ from openai import AsyncOpenAI, OpenAI, APIStatusError, APIConnectionError, APIT
 
 try:
     from .config import (
-        DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL,
+        LLM_API_KEY, LLM_BASE_URL,
         ARK_API_KEY, ARK_BASE_URL, ARK_MODEL,
         MODEL_FLASH, MODEL_PRO, MODEL_CHAT,
     )
     from .observability import record_tokens
 except ImportError:
     from config import (
-        DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL,
+        LLM_API_KEY, LLM_BASE_URL,
         ARK_API_KEY, ARK_BASE_URL, ARK_MODEL,
         MODEL_FLASH, MODEL_PRO, MODEL_CHAT,
     )
@@ -86,8 +86,8 @@ def _retry_sync(fn, model: str):
     raise last_error
 
 # ====== 客户端初始化 ======
-_async_client = AsyncOpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
-_sync_client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
+_async_client = AsyncOpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
+_sync_client = OpenAI(api_key=LLM_API_KEY, base_url=LLM_BASE_URL)
 
 _img_client = None
 if ARK_API_KEY:

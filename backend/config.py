@@ -78,15 +78,36 @@ def get_key(name: str, hermes_fallback: bool = True) -> str:
 
 
 # ============================================================
-# LLM 密钥
+# LLM Provider — 通用配置，不绑定任意供应商
+# 优先级: LLM_* (新) > DEEPSEEK_* (旧兼容) > 默认值
+# 新用户: 配 LLM_API_KEY + LLM_BASE_URL 即可
+# 老用户: DEEPSEEK_API_KEY 仍然生效，无需改动
 # ============================================================
-DEEPSEEK_API_KEY = get_key("DEEPSEEK_API_KEY")
-DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
-# 模型常量
-MODEL_FLASH = "deepseek-chat"    # V3 快速模型，用于意图识别
-MODEL_PRO = "deepseek-v4-pro"    # V4 Pro 推理模型，DAG 拆解/反思
-MODEL_CHAT = "deepseek-chat"     # V3 标准模型，报告/工具提取
+# API 密钥 + 端点（新名优先，旧名兜底）
+LLM_API_KEY = get_key("LLM_API_KEY") or get_key("DEEPSEEK_API_KEY") or ""
+LLM_BASE_URL = (
+    os.environ.get("LLM_BASE_URL")
+    or os.environ.get("DEEPSEEK_BASE_URL")
+    or "https://api.deepseek.com"
+)
+
+# 模型分级（环境变量 → 内置默认值，向后兼容）
+# - flash: 轻量快速，意图识别/工具提取
+# - pro:   重量推理，DAG 拆解/质量审查
+# - chat:  标准综合，报告生成/反思
+LLM_MODEL_FLASH = os.environ.get("LLM_MODEL_FLASH", "deepseek-chat")
+LLM_MODEL_PRO = os.environ.get("LLM_MODEL_PRO", "deepseek-v4-pro")
+LLM_MODEL_CHAT = os.environ.get("LLM_MODEL_CHAT", "deepseek-chat")
+
+# ============================================================
+# 向后兼容别名（所有旧 import 继续生效）
+# ============================================================
+DEEPSEEK_API_KEY = LLM_API_KEY
+DEEPSEEK_BASE_URL = LLM_BASE_URL
+MODEL_FLASH = LLM_MODEL_FLASH
+MODEL_PRO = LLM_MODEL_PRO
+MODEL_CHAT = LLM_MODEL_CHAT
 
 # ============================================================
 # 豆包 Seedream 文生图
@@ -112,12 +133,13 @@ def diagnostics() -> Dict[str, object]:
     return {
         "env": APP_ENV,
         "is_prod": IS_PROD,
-        "deepseek": bool(DEEPSEEK_API_KEY),
+        "llm": bool(LLM_API_KEY),
         "ark_image": bool(ARK_API_KEY),
         "tavily": bool(TAVILY_API_KEY),
         "bocha": bool(BOCHA_API_KEY),
+        "models": {"flash": LLM_MODEL_FLASH, "pro": LLM_MODEL_PRO, "chat": LLM_MODEL_CHAT},
         "env_source": (
-            "os.environ" if os.environ.get("DEEPSEEK_API_KEY") else
+            "os.environ" if os.environ.get("LLM_API_KEY") or os.environ.get("DEEPSEEK_API_KEY") else
             "project .env" if (PROJECT_ROOT / ".env").exists() else
             "~/.hermes/.env" if (Path.home() / ".hermes" / ".env").exists() else
             "none"
