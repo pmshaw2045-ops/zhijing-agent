@@ -8,3 +8,6 @@ data/report_cache.json
 *.egg-info/
 dist/
 build/
+.coverage
+.coverage.*
+htmlcov/
