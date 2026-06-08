@@ -41,8 +41,9 @@ def test_diagnostics_struct():
     assert "is_prod" in d
     assert "llm" in d
     assert isinstance(d["llm"], bool)
-    assert "models" in d
-    assert "flash" in d["models"]
+    assert "llm_models" in d
+    assert "flash" in d["llm_models"]
+    assert "search_provider" in d
 
 
 def test_llm_api_key_backward_compat():

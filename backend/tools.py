@@ -1,7 +1,6 @@
-"""
-Tools v4: 全LLM驱动 + 多源搜索 (Tavily + 博查)
-- web_search: Tavily API 英文搜索
-- bocha_search: 博查AI 中文搜索
+"""Tools v5: 配置化搜索 + LLM驱动分析
+- web_search: Web搜索 (路由: tavily/bocha, 可配置)
+- bocha_search: Web搜索 (路由: tavily/bocha, 可配置)
 - trend_analyze: LLM从搜索结果提取趋势洞察
 - price_analyze: LLM从搜索结果提取价格带数据
 - competitive_analyze: LLM从搜索结果分析竞品格局
@@ -14,10 +13,10 @@ import httpx
 
 try:
     from .llm_client import chat_sync, extract_json, MODEL_FLASH, generate_image
-    from .config import TAVILY_API_KEY, TAVILY_URL, BOCHA_API_KEY, BOCHA_URL
+    from .config import TAVILY_API_KEY, TAVILY_URL, BOCHA_API_KEY, BOCHA_URL, SEARCH_PROVIDER
 except ImportError:
     from llm_client import chat_sync, extract_json, MODEL_FLASH, generate_image
-    from config import TAVILY_API_KEY, TAVILY_URL, BOCHA_API_KEY, BOCHA_URL
+    from config import TAVILY_API_KEY, TAVILY_URL, BOCHA_API_KEY, BOCHA_URL, SEARCH_PROVIDER
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +25,8 @@ TAVILY_KEY = TAVILY_API_KEY
 BOCHA_KEY = BOCHA_API_KEY
 
 AVAILABLE_TOOLS = [
-    {"name": "web_search",        "description": "Tavily英文搜索", "parameters": {"query": "搜索关键词"}},
-    {"name": "bocha_search",      "description": "博查中文搜索(国内电商数据)", "parameters": {"query": "搜索关键词"}},
+    {"name": "web_search",        "description": "Web搜索(英文/全球)", "parameters": {"query": "搜索关键词"}},
+    {"name": "bocha_search",      "description": "Web搜索(中文/电商)", "parameters": {"query": "搜索关键词"}},
     {"name": "trend_analyze",     "description": "LLM从搜索结果提取趋势洞察", "parameters": {"query": "分析指令", "raw_data": "原始搜索结果"}},
     {"name": "price_analyze",     "description": "LLM从搜索结果提取价格带数据", "parameters": {"query": "分析指令", "raw_data": "原始搜索结果"}},
     {"name": "competitive_analyze","description": "LLM从搜索结果分析竞品格局", "parameters": {"query": "分析指令", "raw_data": "原始搜索结果"}},
@@ -42,9 +41,9 @@ AVAILABLE_TOOLS = [
 async def execute_tool(name: str, params: dict) -> dict:
     """异步工具执行"""
     if name == "web_search":
-        return await _tavily_search(params.get("query", ""), params.get("limit", 5))
+        return await _search(params.get("query", ""), params.get("limit", 5), "web_search")
     elif name == "bocha_search":
-        return await _bocha_search(params.get("query", ""), params.get("limit", 8))
+        return await _search(params.get("query", ""), params.get("limit", 8), "bocha_search")
     elif name in ("trend_analyze", "price_analyze", "competitive_analyze", "scoring_engine"):
         return execute_tool_sync(name, params)
     elif name == "report_generate":
@@ -127,6 +126,45 @@ async def _bocha_search(query: str, limit: int = 8) -> dict:
         return {"tool": "bocha_search", "query": query, "error": str(e), "summary": "博查搜索出错", "snippets": [], "source": "bocha_chinese"}
 
 
+# ====== 搜索路由层（配置化 Provider 路由） ======
+
+async def _search(query: str, limit: int, tool_name: str) -> dict:
+    """统一搜索路由：根据配置选择搜索引擎"""
+    provider = SEARCH_PROVIDER
+    # auto: 根据工具名 + 可用key自动选择
+    if provider == "auto":
+        if tool_name == "web_search":
+            provider = "tavily" if TAVILY_KEY else "bocha" if BOCHA_KEY else "none"
+        else:
+            provider = "bocha" if BOCHA_KEY else "tavily" if TAVILY_KEY else "none"
+
+    if provider == "tavily":
+        return await _tavily_search(query, limit)
+    elif provider == "bocha":
+        return await _bocha_search(query, limit)
+    else:
+        return {"tool": tool_name, "query": query, "error": "未配置搜索API",
+                "snippets": [], "summary": f"搜索'{query}'（无可用搜索API）"}
+
+
+def _search_sync(query: str, limit: int, tool_name: str) -> dict:
+    """同步搜索路由"""
+    provider = SEARCH_PROVIDER
+    if provider == "auto":
+        if tool_name == "web_search":
+            provider = "tavily" if TAVILY_KEY else "bocha" if BOCHA_KEY else "none"
+        else:
+            provider = "bocha" if BOCHA_KEY else "tavily" if TAVILY_KEY else "none"
+
+    if provider == "tavily":
+        return _tavily_search_sync(query, limit)
+    elif provider == "bocha":
+        return _bocha_search_sync(query, limit)
+    else:
+        return {"tool": tool_name, "query": query, "error": "未配置搜索API",
+                "snippets": [], "summary": f"搜索'{query}'（无可用搜索API）"}
+
+
 # ====== LLM-Driven Analysis Tools ======
 
 def _llm_extract(prompt_template: str, raw_data: dict, query: str,
@@ -141,7 +179,7 @@ def _llm_extract(prompt_template: str, raw_data: dict, query: str,
         raw = chat_sync(prompt, model=MODEL_FLASH, max_tokens=max_tokens)
         result = extract_json(raw)
         if result:
-            result["data_source"] = "tavily_search" if search_text else "llm_knowledge"
+            result["data_source"] = "search_engine" if search_text else "llm_knowledge"
             result["_llm_driven"] = True
             result["_llm_prompt"] = prompt  # 用于控制台展示
             return result
@@ -313,9 +351,9 @@ def _score_candidates(params: dict) -> dict:
 def execute_tool_sync(name: str, params: dict) -> dict:
     """同步工具执行 — agent_engine使用"""
     if name == "web_search":
-        return _tavily_search_sync(params.get("query", ""), params.get("limit", 5))
+        return _search_sync(params.get("query", ""), params.get("limit", 5), "web_search")
     elif name == "bocha_search":
-        return _bocha_search_sync(params.get("query", ""), params.get("limit", 8))
+        return _search_sync(params.get("query", ""), params.get("limit", 8), "bocha_search")
     elif name == "trend_analyze":
         return _extract_trends(params)
     elif name == "price_analyze":

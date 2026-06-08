@@ -117,13 +117,28 @@ ARK_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
 ARK_MODEL = "doubao-seedream-5-0-260128"
 
 # ============================================================
-# 搜索工具密钥
+# 搜索工具 — 配置化 Provider
+# 优先级: SEARCH_PROVIDER > 自动检测 > 默认 tavily
+# 新用户: 配 SEARCH_API_KEY + SEARCH_PROVIDER 即可
+# 老用户: TAVILY_API_KEY / BOCHA_API_KEY 仍生效
 # ============================================================
-TAVILY_API_KEY = get_key("TAVILY_API_KEY")
-TAVILY_URL = "https://api.tavily.com/search"
 
-BOCHA_API_KEY = get_key("BOCHA_API_KEY")
-BOCHA_URL = "https://api.bochaai.com/v1/web-search"
+# Provider: auto | tavily | bocha
+SEARCH_PROVIDER = os.environ.get("SEARCH_PROVIDER", "auto")
+
+# 统一搜索密钥（新，优先）
+SEARCH_API_KEY = get_key("SEARCH_API_KEY") or ""
+
+# 搜索端点（可覆盖）
+TAVILY_URL = os.environ.get("TAVILY_URL", "https://api.tavily.com/search")
+BOCHA_URL = os.environ.get("BOCHA_URL", "https://api.bochaai.com/v1/web-search")
+
+# 向后兼容密钥：TAVILY_* / BOCHA_* 仍独立生效
+# 新统一密钥 SEARCH_API_KEY 作为两者的兜底
+_tavily_fallback = SEARCH_API_KEY if get_key("TAVILY_API_KEY") == "" else ""
+_bocha_fallback = SEARCH_API_KEY if get_key("BOCHA_API_KEY") == "" else ""
+TAVILY_API_KEY = get_key("TAVILY_API_KEY") or _tavily_fallback or ""
+BOCHA_API_KEY = get_key("BOCHA_API_KEY") or _bocha_fallback or ""
 
 # ============================================================
 # 启动诊断
@@ -134,10 +149,11 @@ def diagnostics() -> Dict[str, object]:
         "env": APP_ENV,
         "is_prod": IS_PROD,
         "llm": bool(LLM_API_KEY),
+        "llm_models": {"flash": LLM_MODEL_FLASH, "pro": LLM_MODEL_PRO, "chat": LLM_MODEL_CHAT},
         "ark_image": bool(ARK_API_KEY),
+        "search_provider": SEARCH_PROVIDER,
         "tavily": bool(TAVILY_API_KEY),
         "bocha": bool(BOCHA_API_KEY),
-        "models": {"flash": LLM_MODEL_FLASH, "pro": LLM_MODEL_PRO, "chat": LLM_MODEL_CHAT},
         "env_source": (
             "os.environ" if os.environ.get("LLM_API_KEY") or os.environ.get("DEEPSEEK_API_KEY") else
             "project .env" if (PROJECT_ROOT / ".env").exists() else
