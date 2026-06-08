@@ -144,9 +144,10 @@
 | P1-3 | 🟡 | report_*.html 样本报告在仓库 | frontend/ | ✅ |
 | P1-4 | 🟡 | 旧版 _build_decompose_prompt/_llm_decompose 未删除 | agent_engine.py | ✅ |
 | P1-5 | 🟡 | 前端空 catch(e) {} 仍有 4 处 | frontend/index.html | ✅ |
-| P2-1 | 🟢 | 无结构化日志 | 全局 | 📋 |
+| P2-1 | 🟢 | 无结构化日志 | 全局 | ✅ |
 | P2-2 | 🟢 | requirements.txt 无精确版本 | requirements.txt | 📋 |
 | P2-3 | 🟢 | dev 默认 token 硬编码 | auth.py | 📋 |
+| P2-4 | 🟢 | SSE 断线无前端重连 | frontend/ | ✅ |
 
 ---
 
