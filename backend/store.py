@@ -126,7 +126,8 @@ class SQLiteBackend:
             self._local.conn = None
 
 
-def migrate_json_to_sqlite(json_path: Path = DATA_DIR / "memory_store.json") -> int:
+def migrate_json_to_sqlite(json_path: Path = DATA_DIR / "memory_store.json",
+                           db_path: Path | None = None) -> int:
     """从JSON文件迁移到SQLite，返回迁移的会话数"""
     if not json_path.exists():
         return 0
@@ -134,7 +135,7 @@ def migrate_json_to_sqlite(json_path: Path = DATA_DIR / "memory_store.json") -> 
     with open(json_path) as f:
         data = json.load(f)
 
-    backend = SQLiteBackend()
+    backend = SQLiteBackend(db_path or DB_PATH)
     count = 0
 
     for sid, sess in data.get("sessions", {}).items():

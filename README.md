@@ -16,7 +16,7 @@
 
 织镜 ZHÌJÌNG 是一个面向**服饰电商**场景的 AI Agent 产品。输入自然语言描述（如"分析 2026 夏季法式茶歇裙的选品机会"），Agent 自动完成意图识别、DAG 任务拆解、多源搜索、LLM 分析、报告生成、质量审查的全流程。
 
-后端**真实调用 DeepSeek LLM**，不是固定模板的伪 demo。
+后端**真实调用 LLM**，不是固定模板的伪 demo。
 
 ***
 
@@ -56,7 +56,7 @@ docker run -p 8899:8899 --env-file .env zhijing
 # 单元测试（mock LLM，快速）
 make test
 
-# 集成测试（真实调用 DeepSeek API，需要有效密钥）
+# 集成测试（真实调用 LLM API，需要有效密钥）
 make test-integration
 ```
 

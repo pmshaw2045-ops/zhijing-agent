@@ -11,3 +11,5 @@ build/
 .coverage
 .coverage.*
 htmlcov/
+.ruff_cache/
+*.html

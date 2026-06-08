@@ -1,0 +1,41 @@
+# 织镜 ZHÌJÌNG .dockerignore
+# 排除构建上下文中不需要的文件，缩小镜像体积
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# 测试
+tests/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ruff_cache/
+
+# 开发文档
+docs/
+AGENTS.md
+
+# 版本控制
+.git/
+.gitignore
+.gitattributes
+
+# 本地数据
+data/*.db
+data/*.json
+!.env.example
+
+# 环境文件（含密钥）
+.env
+.env.*
+!.env.example
+!.env.prod
+
+# 其他
+scripts/
+test_cases/
+report_selection.html
