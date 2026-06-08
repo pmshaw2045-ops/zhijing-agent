@@ -23,9 +23,12 @@ INTENT_REGISTRY = {
         "name": "单品选品分析",
         "display": "智能选品",
         "complexity": Complexity.COMPLEX,
-        "decompose_rule": "搜索→趋势/价格/竞品并行→评分→报告（5-6个任务）",
+        "decompose_rule": "分析单品类市场机会。聚焦：市场搜索趋势判断、价格段分布、竞品格局。根据实际需求选择必要工具，避免全用。不需要同时搜中文和英文，选bocha_search即可。",
         "intent_signals": ["选品", "分析", "机会", "报告"],
         "precheck": ["require_analysis_object"],
+        "relevant_tools": ["bocha_search", "web_search", "trend_analyze",
+                          "price_analyze", "competitive_analyze",
+                          "scoring_engine", "report_generate"],
         "dag": {
             "description": "双源并行搜索→趋势/价格/竞品提取→评分→报告",
             "tasks": [
@@ -45,9 +48,10 @@ INTENT_REGISTRY = {
         "name": "多品牌竞品对标",
         "display": "竞品对标",
         "complexity": Complexity.COMPLEX,
-        "decompose_rule": "多品牌并行搜索→对比分析→SWOT→报告（5-6个任务，需bocha_search×3+web_search兜底）",
+        "decompose_rule": "对比两个品牌的同类产品。聚焦：双方搜索对比、核心指标提取、SWOT各维度。不需要趋势分析和评分，重点是差异化。",
         "intent_signals": ["对比", "对标", "竞品", "比较", "vs"],
-        "precheck": ["require_brands"],
+        "precheck": ["require_analysis_object", "require_brands"],
+        "relevant_tools": ["bocha_search", "web_search", "competitive_analyze", "report_generate"],
         "dag": {
             "description": "博查双品牌搜索+Tavily兜底→对比分析→SWOT→报告",
             "tasks": [
@@ -67,9 +71,10 @@ INTENT_REGISTRY = {
         "name": "品类趋势洞察",
         "display": "趋势洞察",
         "complexity": Complexity.MEDIUM,
-        "decompose_rule": "搜索→提取趋势→热度排序→报告（3-4个任务）",
+        "decompose_rule": "洞察品类流行趋势。聚焦：趋势搜索提取方向判断热度排序。不需要价格或竞品分析。工具尽量精约。",
         "intent_signals": ["趋势", "流行", "洞察", "方向", "面料趋势", "廓形", "色彩"],
-        "precheck": [],
+        "precheck": ["require_analysis_object"],
+        "relevant_tools": ["bocha_search", "web_search", "trend_analyze", "report_generate"],
         "dag": {
             "description": "博查搜索+Tavily兜底→提取→排序→报告",
             "tasks": [
@@ -87,9 +92,10 @@ INTENT_REGISTRY = {
         "name": "商品文案生成",
         "display": "文案生成",
         "complexity": Complexity.SIMPLE,
-        "decompose_rule": "搜索热词→直接生成文案（2个任务：搜索+report_generate，不需要trend_analyze/price_analyze/competitive_analyze）",
+        "decompose_rule": "生成电商商品文案。只需搜索关键词卖点后直接生成文案。绝对不要趋势/价格/竞品任何分析工具。",
         "intent_signals": ["文案", "标题", "详情页", "种草", "口播", "淘宝标题"],
-        "precheck": [],
+        "precheck": ["require_analysis_object"],
+        "relevant_tools": ["bocha_search", "web_search", "report_generate"],
         "dag": {
             "description": "博查搜索热搜词→直接生成文案",
             "tasks": [
@@ -105,9 +111,11 @@ INTENT_REGISTRY = {
         "name": "定价策略分析",
         "display": "定价策略",
         "complexity": Complexity.MEDIUM,
-        "decompose_rule": "搜索价格→价格分析+竞品定价→报告（3-4个任务）",
+        "decompose_rule": "分析品类定价策略。聚焦：价格段分布搜索成本分析竞品定价参考。根据情况选必要工具。",
         "intent_signals": ["定价", "价格策略", "价格带", "成本", "利润"],
-        "precheck": [],
+        "precheck": ["require_analysis_object"],
+        "relevant_tools": ["bocha_search", "web_search", "price_analyze",
+                          "competitive_analyze", "report_generate"],
         "dag": {
             "description": "博查搜索+Tavily兜底→价格/竞品分析→报告",
             "tasks": [
@@ -125,9 +133,10 @@ INTENT_REGISTRY = {
         "name": "上新排期优化",
         "display": "上新排期",
         "complexity": Complexity.MEDIUM,
-        "decompose_rule": "趋势搜索+日历搜索并行→窗口分析→排期建议（4个任务）",
+        "decompose_rule": "规划服装上新排期。聚焦：趋势搜索回顾日历搜索节点后分析最佳窗口。不需要竞品或价格分析。",
         "intent_signals": ["上新", "排期", "日历", "大促", "618", "双11", "测款"],
-        "precheck": [],
+        "precheck": ["require_analysis_object"],
+        "relevant_tools": ["bocha_search", "web_search", "report_generate"],
         "dag": {
             "description": "博查双搜索+Tavily兜底→趋势→报告",
             "tasks": [
@@ -146,8 +155,10 @@ INTENT_REGISTRY = {
         "display": "文生图",
         "complexity": Complexity.SIMPLE,
         "decompose_rule": "跳过拆解，直接用固定模板（生成任务，非推理任务）",
-        "intent_signals": ["生成", "画一张", "设计图", "图片", "摄影图", "产品图", "拍照", "拍摄", "照片", "海报", "模特图"],
+        "intent_signals": ["生成", "设计图", "图片", "摄影图", "产品图", "拍照", "拍摄", "照片", "海报", "模特图"],
         "precheck": ["image_quality"],
+        "relevant_tools": ["image_generate"],
+        "skip_decompose": True,
         "dag": {
             "description": "文生图DAG：生成图片",
             "tasks": [

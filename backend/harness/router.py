@@ -28,14 +28,7 @@ class CostRouter:
         base = _INTENT_COMPLEXITY.get(intent_type, Complexity.MEDIUM)
         score = int(base)
 
-        # 查询长度影响
-        qlen = len(query)
-        if qlen > 80:
-            score += 1
-        elif qlen < 20:
-            score -= 1
-
-        # 品牌数量
+        # 品牌数量（>1个品牌 → 复杂度+1）
         if brands and len(brands) > _BRAND_THRESHOLD:
             score += 1
 

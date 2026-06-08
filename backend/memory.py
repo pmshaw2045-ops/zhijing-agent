@@ -20,6 +20,16 @@ class MemorySystem:
     def __init__(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+
+        # 存储后端：STORE_BACKEND=sqlite 时使用 SQLite，否则使用 JSON
+        self._backend = None
+        if os.environ.get("STORE_BACKEND", "").lower() == "sqlite":
+            try:
+                from .store import SQLiteBackend
+            except ImportError:
+                from store import SQLiteBackend
+            self._backend = SQLiteBackend()
+
         self._store = self._load()
         self._dirty = False
         self._ensure_defaults()
@@ -29,20 +39,28 @@ class MemorySystem:
             if MEMORY_FILE.exists():
                 try:
                     return json.loads(MEMORY_FILE.read_text(encoding="utf-8"))
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"Memory file corrupt: {e}")
                     return {}
             return {}
 
     def _save(self):
+        if self._backend:
+            return  # SQLite 模式下写操作即时完成
         with self._lock:
             MEMORY_FILE.write_text(json.dumps(self._store, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def mark_dirty(self):
-        """标记脏数据，延迟批量写入"""
+        """标记脏数据。SQLite模式下立即写回，JSON模式下延迟刷新"""
+        if self._backend and hasattr(self, '_active_sid') and hasattr(self, '_active_session'):
+            self._backend.set_session(self._active_sid, self._active_session)
+            return
         self._dirty = True
 
     async def flush(self):
-        """异步刷新脏数据到磁盘（线程池执行，不阻塞事件循环）"""
+        """异步刷新脏数据到磁盘"""
+        if self._backend:
+            return  # SQLite 无需刷新
         if self._dirty:
             import asyncio
             await asyncio.to_thread(self._save)
@@ -52,28 +70,46 @@ class MemorySystem:
         if "sessions" not in self._store:
             self._store["sessions"] = {}
         if "long_term" not in self._store:
-            self._store["long_term"] = {
-                "domains": ["女装", "连衣裙", "衬衫", "外套", "裤装"],
-                "brands": ["太平鸟", "伊芙丽", "UR", "ZARA", "优衣库"],
-                "seasons": ["2026春夏", "2026秋冬"],
-                "platforms": ["淘宝", "天猫", "京东", "抖音", "小红书"],
-                "user_preferences": {},
-                "knowledge_snippets": []
-            }
+            self._store["long_term"] = {"domains": {}, "brands": {}, "seasons": {},
+                                          "platforms": {}, "user_preferences": {},
+                                          "knowledge_snippets": []}
         self._save()
 
-    # === 短期记忆 (会话上下文窗口) ===
+    # -- 封装层：统一管理会话 dict 访问 --
+
+    def _get_session(self, session_id):
+        """获取会话dict，不存在返回空dict"""
+        if self._backend:
+            session = self._backend.get_session(session_id)
+            self._active_sid = session_id
+            self._active_session = session
+            return session
+        return self._store.get("sessions", {}).get(session_id, {})
+
+    def _ensure_session(self, session_id):
+        """获取或创建会话dict"""
+        if self._backend:
+            if not self._backend.has_session(session_id):
+                self._backend.set_session(session_id, {"conversation": [], "working": {}})
+            session = self._backend.get_session(session_id)
+            self._active_sid = session_id
+            self._active_session = session
+            return session
+        sessions = self._store.setdefault("sessions", {})
+        if session_id not in sessions:
+            sessions[session_id] = {"conversation": [], "working": {}}
+            self.mark_dirty()
+        return sessions[session_id]
+
     def get_conversation(self, session_id: str) -> list[dict[str, Any]]:
         """获取会话历史"""
-        session = self._store["sessions"].get(session_id, {})
+        session = self._get_session(session_id)
         return session.get("conversation", [])
 
     def append_conversation(self, session_id: str, role: str, content: str):
         """追加会话记录 (自动裁剪超长上下文)"""
-        if session_id not in self._store["sessions"]:
-            self._store["sessions"][session_id] = {"conversation": [], "working": {}}
-
-        conv = self._store["sessions"][session_id]["conversation"]
+        session = self._ensure_session(session_id)
+        conv = session["conversation"]
         conv.append({
             "role": role,
             "content": content[:2000],  # 截断过长内容
@@ -83,7 +119,7 @@ class MemorySystem:
         # 保留最近20轮
         if len(conv) > 40:
             conv = conv[-40:]
-            self._store["sessions"][session_id]["conversation"] = conv
+            self._ensure_session(session_id)["conversation"] = conv
 
         self.mark_dirty()
 
@@ -92,7 +128,7 @@ class MemorySystem:
 
     def get_injectable_context(self, session_id: str) -> str:
         """返回可直接注入LLM prompt的Markdown格式记忆上下文"""
-        session = self._store["sessions"].get(session_id, {})
+        session = self._get_session(session_id)
         conv = session.get("conversation", [])
         working = session.get("working", {})
         summary = session.get("summary", "")
@@ -155,7 +191,7 @@ class MemorySystem:
 
     async def compress_if_needed(self, session_id: str, llm_chat_fn: Callable[[str], Coroutine[Any, Any, str]]) -> bool:
         """滑动窗口溢出时，异步压缩早期对话为摘要。返回是否执行了压缩。"""
-        session = self._store["sessions"].get(session_id, {})
+        session = self._get_session(session_id)
         conv = session.get("conversation", [])
 
         if len(conv) <= self.SLIDING_WINDOW + 5:
@@ -194,14 +230,13 @@ class MemorySystem:
     # === 工作记忆 (当前任务上下文) ===
     def get_working_memory(self, session_id: str) -> dict:
         """获取工作记忆"""
-        session = self._store["sessions"].get(session_id, {})
+        session = self._get_session(session_id)
         return session.get("working", {})
 
     def update_working_memory(self, session_id: str, key: str, value):
         """更新工作记忆中的单个字段"""
-        if session_id not in self._store["sessions"]:
-            self._store["sessions"][session_id] = {"conversation": [], "working": {}}
-        self._store["sessions"][session_id]["working"][key] = value
+        session = self._ensure_session(session_id)
+        self._ensure_session(session_id)["working"][key] = value
         self.mark_dirty()
 
     # === 增强工作记忆 (v2) ===
@@ -210,8 +245,7 @@ class MemorySystem:
         goal = intent.get("goal", {})
         entities = intent.get("entities", {})
         # Auto-create session if not exists
-        if session_id not in self._store["sessions"]:
-            self._store["sessions"][session_id] = {"conversation": [], "working": {}}
+        session = self._ensure_session(session_id)
         working = self.get_working_memory(session_id)
 
         context = working.get("context", {})
@@ -243,14 +277,13 @@ class MemorySystem:
 
         context["user_preferences"] = prefs
         working["context"] = context
-        self._store["sessions"][session_id]["working"] = working
+        self._ensure_session(session_id)["working"] = working
         self.mark_dirty()
 
     def record_analysis(self, session_id: str, query: str, intent: dict,
                         key_findings: str, params: dict = None):
         """记录一次分析的关键发现"""
-        if session_id not in self._store["sessions"]:
-            self._store["sessions"][session_id] = {"conversation": [], "working": {}}
+        session = self._ensure_session(session_id)
 
         # 提取摘要：JSON报告正则提取title，纯文本截断
         summary = key_findings[:300]
@@ -280,7 +313,7 @@ class MemorySystem:
         context["analysis_history"] = history[-5:]
         context["last_analysis"] = history[-1] if history else {}
         working["context"] = context
-        self._store["sessions"][session_id]["working"] = working
+        self._ensure_session(session_id)["working"] = working
         self.mark_dirty()
 
     def get_working_context(self, session_id: str) -> dict:
@@ -326,8 +359,7 @@ class MemorySystem:
     def append_session_chain(self, session_id: str, user_query: str,
                              assistant_summary: str):
         """维护多轮对话链"""
-        if session_id not in self._store["sessions"]:
-            self._store["sessions"][session_id] = {"conversation": [], "working": {}}
+        session = self._ensure_session(session_id)
         working = self.get_working_memory(session_id)
         context = working.get("context", {})
 
@@ -340,7 +372,7 @@ class MemorySystem:
         # 保留最近5轮
         context["session_chain"] = chain[-5:]
         working["context"] = context
-        self._store["sessions"][session_id]["working"] = working
+        self._ensure_session(session_id)["working"] = working
         self.mark_dirty()
 
     # === 长期记忆 (跨会话持久化) ===

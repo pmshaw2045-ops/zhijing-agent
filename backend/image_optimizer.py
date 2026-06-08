@@ -49,5 +49,6 @@ class ImageOptimizer:
         try:
             raw = await chat(prompt, model=MODEL_FLASH, max_tokens=400)
             return raw.strip() or user_prompt
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Image optimize failed: {e}")
             return user_prompt

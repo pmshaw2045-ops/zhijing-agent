@@ -10,9 +10,9 @@ import logging
 from typing import Optional, List
 
 try:
-    from .llm_client import chat, MODEL_CHAT
+    from .llm_client import chat, chat_stream, MODEL_CHAT
 except ImportError:
-    from llm_client import chat, MODEL_CHAT
+    from llm_client import chat, chat_stream, MODEL_CHAT
 
 logger = logging.getLogger(__name__)
 
@@ -216,7 +216,8 @@ JSON规则：
         try:
             ctx = self.memory.get_injectable_context(session_id)
             return f"\n\n---\n## 🧠 Agent记忆上下文\n{ctx}" if ctx else ""
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Memory context for report failed: {e}")
             return ""
 
 

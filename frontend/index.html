@@ -76,7 +76,7 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
 .msg-bubble li { margin: 3px 0; font-size: 13px; }
 
 /* 状态提示 */
-.agent-status { color: var(--text-light); font-size: 13px; padding: 8px 0; }
+.agent-status { color: var(--text-light); font-size: 13px; line-height: 1.7; }
 .agent-status .dot-pulse { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-rose); margin-right: 6px; animation: pulse 1.5s infinite; }
 @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
 
@@ -86,7 +86,7 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
 .msg-bubble pre, .msg-bubble code { max-width: 100%; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
 .msg-bubble > * { max-width: 100%; }
 
-.rc-metrics { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+.rc-metrics { width: 100%; display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
 .rc-metric { flex: 1 1 120px; min-width: 110px; max-width: 200px; background: var(--bg-secondary); border-radius: var(--radius-sm); padding: 12px 14px; text-align: center; border-left: 3px solid var(--accent-rose); overflow: hidden; }
 .rc-metric .val { font-size: 20px; font-weight: 700; color: var(--accent-rose); display: block; word-break: break-word; }
 .rc-metric .lbl { font-size: 11px; color: var(--text-light); margin-top: 4px; line-height: 1.4; }
@@ -95,7 +95,7 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
 .rc-metric.accent-sage { border-left-color: var(--accent-sage); }
 .rc-metric.accent-sage .val { color: var(--accent-sage); }
 
-.rc-bar-chart { margin: 12px 0; }
+.rc-bar-chart { width: 100%; margin: 12px 0; }
 .rc-bar-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; min-width: 0; }
 .rc-bar-label { min-width: 60px; max-width: 100px; font-size: 12px; color: var(--text-secondary); text-align: right; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rc-bar-track { flex: 1; height: 18px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; position: relative; }
@@ -130,7 +130,7 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
 .rc-table-fallback th { background: var(--bg-secondary); padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border-light); }
 .rc-table-fallback td { padding: 8px 10px; border-bottom: 1px solid var(--border-light); }
 
-.rc-insight { padding: 14px 18px; border-radius: var(--radius-sm); margin: 12px 0; font-size: 13px; line-height: 1.75; border-left: 4px solid; transition: box-shadow 0.2s; }
+.rc-insight { width: 100%; padding: 14px 18px; border-radius: var(--radius-sm); margin: 12px 0; font-size: 13px; line-height: 1.75; border-left: 4px solid; transition: box-shadow 0.2s; }
 .rc-insight:hover { box-shadow: var(--shadow-sm); }
 .rc-insight.tip { background: #f0f7f0; border-color: var(--accent-sage); }
 .rc-insight.warn { background: #fef9f0; border-color: #e0a060; }
@@ -654,17 +654,16 @@ function handleSSEEvent(event, bubble) {
 
     } else if (phaseName === 'decompose') {
       var tasks = data.tasks || [];
-      clog('decompose', '拆解完成: ' + tasks.length + '个任务');
-      var dagVis = data.dag_structure || tasks.map(function(t){return t.id}).join('→');
-      clogSection('DAG 任务流', dagVis);
-      if (data.parallel_groups) {
-        data.parallel_groups.forEach(function(g) { clog('dag', '并行组: [' + g.join(', ') + ']'); });
-      }
+      var isLLM = data._llm_generated;
+      var label = isLLM ? '✅ LLM 自主拆解' : (data._fallback ? '⚠️ 模板回退' : '');
+      var taskSummary = tasks.map(function(t){return t.id + '→' + (t.tool||'?');}).join(' | ');
+      clog('decompose', (label || '拆解完成') + ': ' + tasks.length + '个任务 — ' + taskSummary);
+      if (data.rationale) clog('decompose', '设计理由: ' + data.rationale);
 
     } else if (phaseName === 'tool_mapping') {
       var mappings = data.mappings || [];
       clog('tool', '工具绑定: ' + mappings.length + '个任务→工具映射');
-      mappings.forEach(function(m) { clog('tool', '  ' + m.task_id + ' → ' + m.tool); });
+      mappings.forEach(function(m) { clog('tool', '  ' + m.task_id + ' → ' + m.tool + (m.desc ? ': "' + m.desc + '"' : '')); });
 
     } else if (phaseName === 'reflect') {
       if (data.skipped) {
@@ -717,9 +716,8 @@ function handleSSEEvent(event, bubble) {
 
   } else if (type === 'phase' && status === 'step' && data) {
     var tid = data.task_id;
-    var tb = data.state_before;
-    var ta = data.state_after;
-    clog('state', tid + ': ' + tb + ' → ' + ta + ' (' + data.tool + ')');
+    var desc = data.desc || (data.params && data.params.query) || '';
+    clog('state', tid + ': ' + (data.state_before||'') + ' → ' + (data.state_after||'') + ' (' + data.tool + ')' + (desc ? ' — ' + desc : ''));
 
   } else if (type === 'clarify') {
     var msg = event.message || '请补充以下信息';

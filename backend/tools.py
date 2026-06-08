@@ -350,6 +350,7 @@ def _tavily_search_sync(query: str, limit: int = 5) -> dict:
             "raw_results": results[:limit],
         }
     except Exception as e:
+        logger.error(f"web_search failed: {e}")
         return {"tool": "web_search", "query": query, "error": str(e), "summary": f"搜索出错", "snippets": []}
 
 
@@ -383,6 +384,7 @@ def _bocha_search_sync(query: str, limit: int = 8) -> dict:
             "source": "bocha_chinese",
         }
     except Exception as e:
+        logger.error(f"bocha_search failed: {e}")
         return {"tool": "bocha_search", "query": query, "error": str(e), "summary": f"博查出错", "snippets": [], "source": "bocha_chinese"}
 
 

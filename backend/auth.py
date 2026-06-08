@@ -1,13 +1,13 @@
 """
 API 认证 + 速率限制中间件
 
-Bearer Token 认证，默认 dev 模式（无 token 也行）。
-生产环境设置 API_TOKEN 环境变量即可启用。
-速率限制：RATE_LIMIT_RPM 环境变量控制（默认30次/分钟，dev模式60次/分钟）。
+多 Key 支持：环境变量 API_KEYS 可配多个密钥（JSON格式或逗号分隔）。
+每密钥独立限流。dev 模式零配置即可运行。
 """
 import json
 import os
 import time
+import hashlib
 import logging
 from collections import defaultdict
 from fastapi import Request
@@ -16,34 +16,50 @@ from starlette.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
-# 公开路径：无需认证
 _PUBLIC_PATHS = {"/", "/api/health", "/favicon.ico"}
-
-# Token：环境变量 → config → dev默认值
-_API_TOKEN = os.environ.get("API_TOKEN", "zhijing-dev-token-2026")
-_DEV_MODE = "API_TOKEN" not in os.environ
+_DEV_MODE = "API_TOKEN" not in os.environ and "API_KEYS" not in os.environ
 _RATE_LIMIT_RPM = int(os.environ.get("RATE_LIMIT_RPM", "60" if _DEV_MODE else "30"))
 
 
-class RateLimiter:
-    """滑动窗口速率限制器"""
+def _load_keys() -> dict[str, dict]:
+    """加载 API 密钥：优先 API_KEYS JSON，其次 API_TOKEN 单key，dev模式默认key"""
+    default_dev = {"zhijing-dev-token-2026": {"name": "dev", "rate_limit": 60}}
+    raw = os.environ.get("API_KEYS", "")
+    if raw:
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            # 逗号分隔的简单格式: "key1,key2"
+            return {k.strip(): {"name": f"user_{i}", "rate_limit": _RATE_LIMIT_RPM}
+                    for i, k in enumerate(raw.split(",")) if k.strip()}
+    token = os.environ.get("API_TOKEN", "")
+    if token:
+        return {token: {"name": "default", "rate_limit": _RATE_LIMIT_RPM}}
+    if _DEV_MODE:
+        return default_dev
+    return {}
 
-    def __init__(self, rpm: int = 30):
-        self.rpm = rpm
+
+_api_keys = _load_keys()
+
+
+class RateLimiter:
+    """滑动窗口速率限制器，支持每 key 独立限流"""
+
+    def __init__(self, default_rpm: int = 30):
+        self.default_rpm = default_rpm
         self._window: dict[str, list[float]] = defaultdict(list)
 
-    def check(self, client_id: str) -> bool:
-        """检查是否允许请求，返回 True=允许"""
+    def check(self, client_id: str, rpm: int = None) -> bool:
         now = time.time()
         window = self._window[client_id]
-        # 清理过期记录
+        limit = rpm or self.default_rpm
         window[:] = [t for t in window if now - t < 60]
-        if len(window) >= self.rpm:
+        if len(window) >= limit:
             return False
         window.append(now)
-        # 防止内存泄漏：每个 client 最多保留 rpm+10 条
-        if len(window) > self.rpm + 10:
-            window[:] = window[-self.rpm:]
+        if len(window) > limit + 10:
+            window[:] = window[-limit:]
         return True
 
 
@@ -51,45 +67,37 @@ _rate_limiter = RateLimiter(_RATE_LIMIT_RPM)
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
-    """Bearer Token 认证 + 速率限制中间件"""
+    """多 Key Bearer Token 认证 + 速率限制"""
 
     async def dispatch(self, request: Request, call_next):
-        # 公开路径跳过
         if request.url.path in _PUBLIC_PATHS or request.url.path.startswith("/static"):
             return await call_next(request)
-
-        # OPTIONS 预检跳过
         if request.method == "OPTIONS":
             return await call_next(request)
 
-        # 速率限制（基于客户端 IP）
         client_ip = request.client.host if request.client else "unknown"
-        if not _rate_limiter.check(client_ip):
-            return JSONResponse(
-                status_code=429,
-                content={"error": f"Rate limit exceeded ({_RATE_LIMIT_RPM} req/min)"}
-            )
 
-        # 检查 Authorization header
         auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            token = auth[7:]
-            if token == _API_TOKEN:
-                return await call_next(request)
+        token = auth[7:] if auth.startswith("Bearer ") else ""
 
-        # Dev 模式：无 token 时允许但打 warning
+        if token and token in _api_keys:
+            key_info = _api_keys[token]
+            rpm = key_info.get("rate_limit", _RATE_LIMIT_RPM)
+            if not _rate_limiter.check(token, rpm):
+                return JSONResponse(status_code=429,
+                    content={"error": f"Rate limit ({rpm}/min) exceeded for {key_info['name']}"})
+            return await call_next(request)
+
+        # Dev 模式：无 token 允许
         if _DEV_MODE and not auth:
-            logger.warning(
-                "DEV mode: no auth token. Set API_TOKEN env var for production."
-            )
+            if not _rate_limiter.check(client_ip, _RATE_LIMIT_RPM):
+                return JSONResponse(status_code=429,
+                    content={"error": f"Rate limit exceeded ({_RATE_LIMIT_RPM}/min)"})
             response = await call_next(request)
-            response.headers["X-Auth-Warning"] = "dev-mode-no-token"
+            response.headers["X-Auth-Warning"] = "dev-mode"
             return response
 
-        return JSONResponse(
-            status_code=401,
-            content={"error": "Invalid or missing API token"}
-        )
+        return JSONResponse(status_code=401, content={"error": "Invalid or missing API token"})
 
 
 def get_auth_status() -> dict:

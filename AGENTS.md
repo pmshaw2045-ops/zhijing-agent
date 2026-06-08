@@ -2,31 +2,24 @@
 
 > 项目类型：AI Agent 产品 (Web Application)
 > 目标用户：服饰类电商商家（选品/运营/商品企划）
-> 技术栈：Python FastAPI + DeepSeek API + HTML/JS
-> 版本：v1.1.0
+> 技术栈：Python 3.11 + FastAPI + DeepSeek + 豆包Seedream + HTML/JS/CSS
+> 版本：v2.0.0
 
 ---
 
-## v1.1.0 变更 (2026-06-05)
+## v2.0.0 架构重构 (2026-06-06)
 
 | 变更 | 内容 |
 |------|------|
-| P3 模型分级 | Phase 1 意图识别 → flash; Phase 3 DAG拆解 → pro; Phase 6 报告 → pro; Phase 7 反思 → pro |
-| P0 LLM驱动工具 | trend_analyze/price_analyze/competitive_analyze/scoring_engine 全部改为LLM提取 |
-| P2 DAG差异化 | 6种意图各自独立DAG模板 (选品/竞品/趋势/文案/定价/排期) |
-| P1 反思修正环 | 新增Phase 7: LLM质检 (数据一致性+Goal对齐+可落地性三维评分) |
-| P4 记忆注入 | 意图识别注入对话历史; 报告生成注入用户偏好和历史品类 |
+| LLM自由拆解DAG | 不再依赖固定模板，LLM根据意图+工具列表自主设计；模板仅作fallback |
+| JSON报告渲染 | 后端输出结构化JSON → 前端9种模板函数渲染，根除LLM类名幻觉 |
+| IntentRegistry | 7种意图集中注册（mode/name/display/complexity/decompose_rule/intent_signals/precheck/relevant_tools/dag） |
+| 记忆系统v2 | 滑动窗口+递归摘要+MD格式注入+五层记忆架构 |
+| 工具按意图过滤 | relevant_tools字段，非文生图意图看不到image_generate |
+| 前置校验rewrite | entity驱动+user_input兜底+默认规则，不再依赖黑名单 |
+| 质量控制 | 通过/不通过/警告三种状态独立SSE事件，反思评分阈值7分 |
 
-## 角色分工
-
-| 角色 | 职责 | 交付物 |
-|------|------|--------|
-| **PM (产品经理)** | 需求分析、PRD、功能规格、验收标准 | `PRD.md` |
-| **Backend Dev** | Agent引擎、LLM调用编排、记忆系统、API | `backend/` |
-| **Frontend Dev** | 交互UI、Console可视化、API对接 | `frontend/` |
-| **QA** | 端到端测试、边界case验证 | 测试报告 |
-
-## 核心架构 v7
+## 核心架构 v8
 
 ```
 用户浏览器 (frontend/index.html)
@@ -34,59 +27,79 @@
     ▼
 FastAPI Server (backend/server.py)
     │
-    ├── Agent Engine (backend/agent_engine.py)
-    │   ├── Phase 1: 意图识别      → deepseek-v4-flash (轻量+记忆注入)
-    │   ├── Phase 2: 前置校验      → 规则引擎 (阻塞/hint分离)
-    │   ├── Phase 3: DAG任务拆解   → deepseek-v4-pro (按意图差异化)
-    │   ├── Phase 4: 工具映射      → 规则引擎
-    │   ├── Phase 5: 执行调度      → 执行引擎 + LLM驱动工具
-    │   ├── Phase 6: 报告生成      → deepseek-v4-pro (记忆注入)
-    │   └── Phase 7: 反思修正      → deepseek-v4-pro (三维评分)
+    │   ├── Agent Engine (backend/agent_engine.py) — 868行
+    │   │   ├── [DEPRECATED v7] 旧意图/预检/报告/反思方法已标记，由提取模块替代
+    │   ├── Phase 0: 多轮对话检测 → conversation.py
+    │   ├── Phase 1: 意图识别       → deepseek-chat (记忆注入)
+    │   ├── Phase 2: 前置校验       → PrecheckEngine (entity驱动)
+    │   ├── Phase 3: DAG任务拆解    → deepseek-v4-pro (LLM自主, 模板fallback)
+    │   ├── Phase 4: 工具映射       → ToolRegistry
+    │   ├── Phase 5: 执行调度       → ParallelExecutor + LLM驱动工具
+    │   ├── Phase 6: 报告生成       → ReportBuilder (JSON Schema)
+    │   └── Phase 7: 反思修正       → ReflectionEngine (三维评分, 最多2次重试)
+    │
+    ├── IntentRegistry (backend/intent_registry.py) — Single Source of Truth
+    │   └── 7种意图 × 9字段: mode/name/display/complexity/decompose_rule/
+    │       intent_signals/precheck/relevant_tools/dag
     │
     ├── Memory System (backend/memory.py)
-    │   ├── 短期记忆: 会话上下文窗口 → 注入意图识别prompt
-    │   ├── 工作记忆: 当前任务状态 → 注入报告生成prompt
-    │   └── 长期记忆: JSON文件持久化
+    │   ├── L1 工作记忆: 当前任务上下文
+    │   ├── L2 短期记忆: 滑动窗口(10条)+递归摘要
+    │   ├── L3 主题上下文: 品类/品牌/季节/平台偏好
+    │   ├── L4 分析历史: record_analysis → title提取
+    │   └── L5 长期记忆: domains/brands/seasons/user_prefs
+    │
+    ├── Precheck Engine (backend/precheck.py)
+    │   ├── entity驱动: category > subject_in_input > goal.品类
+    │   ├── user_input兜底: _PRODUCT_KW关键词匹配
+    │   └── 默认规则: intent数据缺失时启用require_analysis_object
     │
     └── Tools (backend/tools.py) — 全LLM驱动
-        ├── web_search: Tavily API 真实搜索
+        ├── web_search: Tavily API
+        ├── bocha_search: 博查BoChaAI (中文电商)
         ├── trend_analyze: LLM提取趋势洞察
         ├── price_analyze: LLM提取价格带
         ├── competitive_analyze: LLM分析竞品格局
         ├── scoring_engine: LLM多维度评分
-        └── report_generate: 标记 → 由agent_engine接管
+        ├── report_generate: JSON Schema报告
+        └── image_generate: 豆包Seedream 5.0
 ```
 
-## 模型使用策略 (v1.1.1 混合策略)
+## 意图类型与工具绑定
+
+| 意图 | 可用工具 | 前置校验 |
+|------|------|------|
+| 单品选品分析 | bocha,web,trend,price,competitive,scoring,report (7) | require_analysis_object |
+| 多品牌竞品对标 | bocha,web,competitive,report (4) | require_analysis_object + require_brands |
+| 品类趋势洞察 | bocha,web,trend,report (4) | require_analysis_object |
+| 商品文案生成 | bocha,web,report (3) | require_analysis_object |
+| 定价策略分析 | bocha,web,price,competitive,report (5) | require_analysis_object |
+| 上新排期优化 | bocha,web,report (3) | require_analysis_object |
+| 文生图 | image_generate (1) | image_quality |
+
+## 模型使用策略
 
 | 阶段 | 模型 | 理由 |
 |------|------|------|
-| Phase 1 意图识别 | `deepseek-chat` (V3) | 分类任务，低延迟优先 |
-| Phase 3 DAG拆解 | `deepseek-v4-pro` | 唯一需要深度推理的环节 |
-| Phase 6 报告生成 | `deepseek-chat` (V3) | 长文生成，速度优先 |
+| Phase 1 意图识别 | `deepseek-chat` (V3) | 分类任务，低延迟 |
+| Phase 3 DAG拆解 | `deepseek-v4-pro` | 深度推理，max_tokens=2000 |
+| Phase 6 报告生成 | `deepseek-chat` (V3) | JSON输出，速度优先 |
 | Phase 7 反思修正 | `deepseek-chat` (V3) | 快速质检 |
-| 工具层LLM提取 | `deepseek-chat` (V3) | 结构化提取，低温 |
+| 工具层LLM提取 | `deepseek-chat` (V3) | 结构化提取 |
+| 记忆压缩摘要 | `deepseek-chat` (V3) | max_tokens=200 |
 
-## 工具数据源 (全LLM驱动)
+## DAG 拆解策略
 
-| Tool | 数据源 | 驱动方式 |
-|------|--------|----------|
-| web_search | Tavily API | 真实搜索 |
-| trend_analyze | LLM从搜索结果提取 | LLM推理 |
-| price_analyze | LLM从搜索结果提取 | LLM推理 |
-| competitive_analyze | LLM从搜索结果提取 | LLM推理 |
-| scoring_engine | LLM综合评分 | LLM推理 |
+**LLM自主拆解** (当前):
+- 仅提供意图类型+目标+relevant_tools+分解规则
+- 无模板干扰，LLM自主设计任务流
+- 兼容 `depends_on`/`deps`/`nodes`/`dag` 等多种LLM输出变体
+- 失败时fallback到 registry 中的 dag 模板
 
-## DAG差异化 (6种意图)
-
-| 意图 | DAG结构 | 任务数 |
-|------|---------|--------|
-| selection 选品 | T1→(T2∥T3∥T4)→T5→T6 | 6 |
-| competitive 竞品 | (T1∥T2)→(T3∥T4)→T5 | 5 |
-| trend 趋势 | T1→T2→T3→T4 | 4 |
-| copy 文案 | T1→T2→T3 | 3 |
-| pricing 定价 | T1→(T2∥T3)→T4 | 4 |
-| launch 排期 | (T1∥T2)→T3→T4 | 4 |
+**fallback模板** (兜底):
+- 注册在 intent_registry 的 `dag` 字段
+- LLM返回非JSON或缺少`tasks`字段时触发
+- 文生图意图跳过LLM拆解，直接走固定模板
 
 ## Phase 7 反思修正
 
@@ -95,27 +108,51 @@ FastAPI Server (backend/server.py)
 - **目标对齐**: 是否回答了用户核心问题
 - **可落地性**: 结论是否有具体可执行建议
 
-overall < 6 → 报告末尾追加质量风险标注
-有 warnings → 追加提示标注
+流程: overall < 7 → 自动重试 (最多2次, 保留最高分) → 追加质量审查区块
 
 ## 文件结构
 
 ```
 /Users/admin/Desktop/test/fashion-agent-v2/
-├── AGENTS.md          ← 本文件
-├── PRD.md             ← 产品需求文档
-├── backend/
-│   ├── server.py      ← FastAPI 主服务
-│   ├── agent_engine.py← Agent Pipeline v7
-│   ├── memory.py      ← 记忆系统
-│   ├── tools.py       ← 工具实现 v3 (全LLM驱动)
-│   ├── llm_client.py  ← DeepSeek API v6 (同步+异步)
+├── AGENTS.md              ← 本文件
+├── PRD.md                 ← 产品需求文档
+├── architecture_review.md ← 架构审查报告
+├── summary_20260606.md    ← 产品总结
+├── backend/               ← 23模块 / 3,892行
+│   ├── server.py          163行  FastAPI 主服务
+│   ├── agent_engine.py    1050行 Agent Pipeline (待拆分)
+│   ├── memory.py          394行  五层记忆系统
+│   ├── tools.py           395行  8个工具实现
+│   ├── report.py          253行  JSON报告生成器
+│   ├── intent_registry.py 226行  意图元数据中心
+│   ├── config.py          132行  配置管理
+│   ├── llm_client.py      121行  LLM客户端
+│   ├── precheck.py        140行  前置校验引擎
+│   ├── intent.py          118行  意图识别路由
+│   ├── observability.py   116行  指标收集
+│   ├── conversation.py    114行  多轮场景检测
+│   ├── auth.py            100行  认证+限流
+│   ├── reflect.py         58行   反思引擎
+│   ├── image_optimizer.py 53行   文生图优化
+│   ├── harness/           420行  管道基础设施
+│   │   ├── tracer.py      98行   全链路追踪
+│   │   ├── router.py      87行   CostRouter
+│   │   ├── executor.py    85行   ParallelExecutor
+│   │   ├── registry.py    83行   ToolRegistry
+│   │   └── dag_loader.py  66行   DAG模板加载
 │   └── requirements.txt
 ├── frontend/
-│   └── index.html     ← SPA 前端
-├── data/
-│   └── memory_store.json ← 持久化记忆
-└── start.sh           ← 一键启动脚本
+│   └── index.html         1204行 SPA前端 (待拆分)
+├── tests/                 4个测试文件 / 32项测试
+│   ├── conftest.py
+│   ├── test_config.py
+│   ├── test_intent_registry.py
+│   ├── test_memory.py
+│   └── test_report_clean.py
+├── .github/workflows/
+│   └── test.yml           CI自动运行pytest
+└── data/
+    └── memory_store.json  持久化记忆
 ```
 
 ## API 设计
@@ -126,30 +163,35 @@ overall < 6 → 报告末尾追加质量风险标注
 {
   "message": "帮我分析2026夏季法式茶歇裙的选品机会",
   "session_id": "sess_xxx",
-  "mode": "selection"  // selection|competitive|trend|copy|pricing|launch
+  "mode": "selection"
 }
 
 // Response (SSE Stream)
-data: {"type":"phase","phase":"intent","data":{...}}
-data: {"type":"phase","phase":"precheck","data":{...}}
-data: {"type":"phase","phase":"decompose","data":{...}}
-data: {"type":"phase","phase":"tool_mapping","data":{...}}
-data: {"type":"phase","phase":"execute","data":{...}}
-data: {"type":"phase","phase":"report","data":{...}}
-data: {"type":"phase","phase":"reflect","data":{"scores":{...},"passed":true}}
-data: {"type":"result","content":"...html..."}
+data: {"type":"phase","phase":"intent","status":"done","data":{"intent":{...}}}
+data: {"type":"phase","phase":"precheck","status":"done","data":{"checks":{...}}}
+data: {"type":"clarify","message":"..."}  // 信息不足时
+data: {"type":"phase","phase":"decompose","status":"done","data":{"tasks":[...],"_llm_generated":true}}
+data: {"type":"phase","phase":"tool_mapping","status":"done","data":{"mappings":[...]}}
+data: {"type":"phase","phase":"execute","status":"step","data":{...}}
+data: {"type":"result","content":"{json报告}"}
+data: {"type":"quality_review","data":{"passed":true,"scores":{...}}}
+data: {"type":"summary","data":{"tokens":...,"latency_ms":...}}
 data: {"type":"done"}
 ```
 
+### GET /api/memory/{session_id}
+返回完整记忆状态：stats + working_memory + topic_context + analysis_history + long_term + conversation
+
 ## 验收标准
 
-1. ✅ Agent能正确识别6种意图模式
-2. ✅ 真实调用DeepSeek LLM进行意图识别和任务拆解
-3. ✅ DAG任务流按意图差异化，非统一模板
-4. ✅ 趋势/价格/竞品工具由LLM驱动提取，非关键词匹配
-5. ✅ 模型分级: flash做轻量, pro做重量
-6. ✅ Phase 7反思修正环，三维评分
-7. ✅ 记忆注入: 对话历史→意图识别, 偏好→报告生成
-8. ✅ Console面板实时展示Pipeline执行过程
-9. ✅ 前端与后端通过SSE实时通信
-10. ✅ 报告内容由LLM真实生成，非硬编码
+1. ✅ 7种意图LLM识别+路由
+2. ✅ DAG由LLM自主设计，模板仅fallback
+3. ✅ 工具按意图过滤（relevant_tools）
+4. ✅ LLM驱动趋势/价格/竞品/评分工具
+5. ✅ 模型分级: flash轻量/pro深度
+6. ✅ Phase 7反思修正，三维评分≥7阈值
+7. ✅ 五层记忆架构，滑动窗口+递归摘要
+8. ✅ Console面板实时展示Pipeline+Prompt
+9. ✅ JSON Schema前端渲染，根除类名幻觉
+10. ✅ 前置校验entity驱动+user_input兜底
+11. ✅ 32项自动化测试 + GitHub Actions CI

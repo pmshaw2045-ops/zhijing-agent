@@ -42,15 +42,15 @@ else:
     logger.warning("ARK_API_KEY not found! Image generation will fail.")
 
 
-async def chat(prompt: str, model: str = MODEL_FLASH, max_tokens: int = 1024) -> str:
+async def chat(prompt: str, model: str = MODEL_FLASH, max_tokens: int = 1024,
+               json_mode: bool = False) -> str:
     """异步调用 DeepSeek Chat API"""
+    kwargs = dict(model=model, messages=[{"role": "user", "content": prompt}],
+                  max_tokens=max_tokens, temperature=0.7)
+    if json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
     try:
-        resp = await _async_client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            temperature=0.7,
-        )
+        resp = await _async_client.chat.completions.create(**kwargs)
         output = resp.choices[0].message.content.strip()
         # 估算 token 用量：中文≈1.5字符/token，粗略用字符数/2
         est_tokens = len(prompt) // 2 + len(output) // 2
@@ -58,6 +58,23 @@ async def chat(prompt: str, model: str = MODEL_FLASH, max_tokens: int = 1024) ->
         return output
     except Exception as e:
         logger.error(f"DeepSeek API error (async, model={model}): {e}")
+        raise
+
+
+async def chat_stream(prompt: str, model: str = MODEL_CHAT, max_tokens: int = 3000,
+                      json_mode: bool = False):
+    """流式调用 DeepSeek API，逐 token yield"""
+    kwargs = dict(model=model, messages=[{"role": "user", "content": prompt}],
+                  max_tokens=max_tokens, temperature=0.3, stream=True)
+    if json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+    try:
+        stream = await _async_client.chat.completions.create(**kwargs)
+        async for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+    except Exception as e:
+        logger.error(f"Stream error: {e}")
         raise
 
 
@@ -80,20 +97,23 @@ def chat_sync(prompt: str, model: str = MODEL_FLASH, max_tokens: int = 1024, tim
 
 
 def extract_json(text: str) -> dict:
-    """从LLM输出提取JSON"""
+    """从LLM输出提取JSON。兼容前导文字+JSON+尾随文字的混合输出。"""
     text = text.strip()
+    # 移除 markdown 代码块
     text = re.sub(r'```(?:json)?\s*', '', text)
     text = re.sub(r'```\s*$', '', text)
     text = text.strip()
+    # 尝试直接解析
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
+    # 正则提取：找到第一个 { 到 最后一个 }
     m = re.search(r'\{[\s\S]*\}', text)
     if m:
         try:
             return json.loads(m.group())
-        except:
+        except json.JSONDecodeError:
             pass
     return {}
 

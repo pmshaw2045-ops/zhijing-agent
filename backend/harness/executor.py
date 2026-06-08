@@ -58,6 +58,8 @@ class ParallelExecutor:
                 yield {
                     "task_id": task_def.get("task_id") or task_def.get("id", "?"),
                     "tool": task_def["tool"],
+                    "desc": task_def.get("desc", ""),
+                    "params": {"query": task_def.get("desc", "")},
                     "state_before": "PENDING",
                     "state_after": "COMPLETED",
                     "tool_result": result,
@@ -65,21 +67,29 @@ class ParallelExecutor:
                 completed[task_def.get("task_id") or task_def.get("id", "?")] = result
 
     async def _run_task(self, task_def: dict, timeout: int = 30) -> dict:
-        """执行单个任务，自动适配同步/异步，含超时保护"""
+        """执行单个任务，3次重试 + 失败降级"""
         tid = task_def.get("task_id") or task_def.get("id", "?")
         name = task_def["tool"]
         params = {"query": task_def.get("desc", "")}
-        try:
-            result = self._exec(name, params)
-            if asyncio.iscoroutine(result):
-                return await asyncio.wait_for(result, timeout=timeout)
-            return result
-        except asyncio.TimeoutError:
-            logger.error(f"Task {tid} ({name}) timed out after {timeout}s")
-            return {"error": f"Task timed out after {timeout}s", "task_id": tid}
-        except Exception as e:
-            logger.error(f"Task {tid} ({name}) failed: {e}")
-            return {"error": str(e), "task_id": tid}
+        last_error = None
+
+        for attempt in range(1, 4):  # 最多3次
+            try:
+                result = self._exec(name, params)
+                if asyncio.iscoroutine(result):
+                    result = await asyncio.wait_for(result, timeout=timeout)
+                return result
+            except asyncio.TimeoutError:
+                last_error = f"timeout after {timeout}s"
+                logger.warning(f"Task {tid} ({name}) retry {attempt}/3: {last_error}")
+                await asyncio.sleep(1 * attempt)
+            except Exception as e:
+                last_error = str(e)
+                logger.warning(f"Task {tid} ({name}) retry {attempt}/3: {last_error}")
+                await asyncio.sleep(1 * attempt)
+
+        logger.error(f"Task {tid} ({name}) FAILED after 3 retries: {last_error}")
+        return {"error": last_error, "task_id": tid, "degraded": True}
 
     def _deps_satisfied(self, deps: list[str], completed: dict) -> bool:
         return all(d in completed for d in deps)

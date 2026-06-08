@@ -114,5 +114,6 @@ class IntentRouter:
         try:
             ctx = self.memory.get_injectable_context(session_id)
             return ctx if ctx else ""
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Memory context failed: {e}")
             return ""
