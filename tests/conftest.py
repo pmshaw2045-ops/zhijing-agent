@@ -8,19 +8,19 @@ from pathlib import Path
 # 添加 backend 到 path
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
-# 确保单元测试不依赖真实 API Key
-os.environ.setdefault("DEEPSEEK_API_KEY", "test-key")
-os.environ.setdefault("ARK_API_KEY", "test-key")
-os.environ.setdefault("TAVILY_API_KEY", "test-key")
-os.environ.setdefault("BOCHA_API_KEY", "test-key")
+# 确保单元测试不依赖真实 API Key（集成测试通过 USE_REAL_API 控制）
+if not os.environ.get("USE_REAL_API"):
+    os.environ.setdefault("DEEPSEEK_API_KEY", "test-key")
+    os.environ.setdefault("ARK_API_KEY", "test-key")
+    os.environ.setdefault("TAVILY_API_KEY", "test-key")
+    os.environ.setdefault("BOCHA_API_KEY", "test-key")
 
 
 @pytest.fixture
 def integration():
-    """集成测试标记：跳过无真实 API Key 的测试"""
-    key = os.environ.get("DEEPSEEK_API_KEY", "")
-    if not key or key == "test-key":
-        pytest.skip("跳过集成测试（需要设置 DEEPSEEK_API_KEY）")
+    """集成测试标记：需要 USE_REAL_API=1 环境变量"""
+    if not os.environ.get("USE_REAL_API"):
+        pytest.skip("跳过集成测试（设置 USE_REAL_API=1 执行）")
 
 
 @pytest.fixture
