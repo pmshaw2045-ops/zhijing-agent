@@ -51,14 +51,9 @@ docker run -p 8899:8899 --env-file .env zhijing
 ***
 
 ## 截图
-
-> *TODO: 添加产品截图和演示 GIF。建议用:*
->
-> - *选品分析报告展示（指标卡片 + 柱状图 + 表格）*
->
->   <br />
-> - *Console 面板展示 Pipeline 实时状态*
-> - *竞品对标 SWOT 矩阵*
+![alt text](image.png)
+![alt text](image-1.png)
+![alt text](image-2.png)
 
 ***
 
