@@ -423,15 +423,26 @@ function downloadPDF(bubbleEl) {
     if (win) {
       win.document.write(html);
       win.document.close();
-      // 等窗口渲染完成再触发打印
-      win.onload = function() { setTimeout(function() { win.print(); }, 200); };
+      // 双重 requestAnimationFrame 确保渲染完成
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          win.print();
+        });
+      });
     } else {
       var iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       document.body.appendChild(iframe);
       var doc = iframe.contentDocument || iframe.contentWindow.document;
       doc.open(); doc.write(html); doc.close();
-      iframe.onload = function() { setTimeout(function() { iframe.contentWindow.print(); document.body.removeChild(iframe); }, 500); };
+      iframe.onload = function() {
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            iframe.contentWindow.print();
+            document.body.removeChild(iframe);
+          });
+        });
+      };
     }
   });
 }
