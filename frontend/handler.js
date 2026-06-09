@@ -234,6 +234,8 @@ function handleSSEEvent(event, bubble) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
     clog('success', '结果已渲染到对话区');
     injectDownloadBtn(bubbleEl);
+    // 标记当前报告气泡（打印时只显示这个）
+    bubble.classList.add('print-report');
 
   } else if (type === 'done') {
     clog('', '══════════ PIPELINE 完成 ══════════');
@@ -397,23 +399,5 @@ function injectDownloadBtn(bubbleEl) {
 }
 
 function downloadPDF(bubbleEl) {
-  var clone = bubbleEl.cloneNode(true);
-  var btn = clone.querySelector('.btn-download-pdf');
-  if (btn) btn.remove();
-  var styleBlocks = document.querySelectorAll('style');
-  var cssText = '';
-  styleBlocks.forEach(function(s) { cssText += s.textContent; });
-  var title = (document.querySelector('.header-title') && document.querySelector('.header-title').textContent) || '织镜报告';
-  var printCss = '.btn-download-pdf,.console-panel,.header-status,.header-meta,.btn-toggle-console,.chat-input-area,.quick-actions{display:none!important}' +
-    '.message{max-width:100%!important}' +
-    '.msg-bubble{max-width:100%!important;padding:0;border:none;border-radius:0;background:transparent;box-shadow:none}' +
-    '@page{size:A4;margin:15mm}';
-  var html = '<!DOCTYPE html><html lang=zh-CN><head><meta charset=UTF-8><title>' + title + '</title>' +
-    '<style>' + printCss + cssText + '</style>' +
-    '</head><body>' + clone.innerHTML + '</body></html>';
-  var win = window.open('', '_blank');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  win.print();
+  window.print();
 }
