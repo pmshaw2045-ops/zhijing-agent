@@ -403,10 +403,9 @@ function downloadPDF(bubbleEl) {
   var btn = clone.querySelector('.btn-download-pdf');
   if (btn) btn.remove();
   var title = (document.querySelector('.header-title') && document.querySelector('.header-title').textContent) || '织镜报告';
+  // 收集所有 CSS
   var cssText = '';
-  // 收集 inline <style>
   document.querySelectorAll('style').forEach(function(s) { cssText += s.textContent + '\n'; });
-  // fetch <link> 样式表
   var linkPromises = [];
   document.querySelectorAll('link[rel=stylesheet]').forEach(function(link) {
     linkPromises.push(fetch(link.href).then(function(r) { return r.text(); }).catch(function() { return ''; }));
@@ -419,30 +418,31 @@ function downloadPDF(bubbleEl) {
       '.btn-download-pdf{display:none!important}' +
       cssText +
       '</style></head><body>' + clone.outerHTML + '</body></html>';
-    var win = window.open('', '_blank', 'width=900,height=700');
+    var blob = new Blob([html], {type: 'text/html'});
+    var url = URL.createObjectURL(blob);
+    var win = window.open(url, '_blank', 'width=900,height=700');
     if (win) {
-      win.document.write(html);
-      win.document.close();
-      // 双重 requestAnimationFrame 确保渲染完成
-      requestAnimationFrame(function() {
+      win.onload = function() {
         requestAnimationFrame(function() {
-          win.print();
-        });
-      });
-    } else {
-      var iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
-      var doc = iframe.contentDocument || iframe.contentWindow.document;
-      doc.open(); doc.write(html); doc.close();
-      iframe.onload = function() {
-        requestAnimationFrame(function() {
-          requestAnimationFrame(function() {
-            iframe.contentWindow.print();
-            document.body.removeChild(iframe);
-          });
+          requestAnimationFrame(function() { win.print(); });
         });
       };
+    } else {
+      // 弹窗被拦截 → blob URL + location 兜底
+      var w2 = window.open('', '_blank');
+      if (w2) {
+        w2.location = url;
+        var checkInterval = setInterval(function() {
+          if (w2.document.readyState === 'complete') {
+            clearInterval(checkInterval);
+            requestAnimationFrame(function() {
+              requestAnimationFrame(function() { w2.print(); });
+            });
+          }
+        }, 100);
+      }
     }
+    // 30秒后释放 blob URL
+    setTimeout(function() { URL.revokeObjectURL(url); }, 30000);
   });
 }
