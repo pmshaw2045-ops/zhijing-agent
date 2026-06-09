@@ -12,9 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 应用代码
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
-COPY data/ ./data/
 
-# 创建数据目录
+# 创建数据目录（运行时动态创建）
 RUN mkdir -p /app/data
 
 # 环境变量（生产环境需覆盖）
