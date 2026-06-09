@@ -218,6 +218,7 @@ function handleSSEEvent(event, bubble) {
     if (typeof content === 'string' && content.trim().startsWith('{')) {
       try {
         var json = JSON.parse(content);
+        bubbleEl.dataset.reportJson = JSON.stringify(json);
         bubbleEl.innerHTML = renderReport(json);
         void bubbleEl.offsetHeight;
         bubbleEl.style.flex = '1';
@@ -399,44 +400,141 @@ function injectDownloadBtn(bubbleEl) {
 }
 
 function downloadPDF(bubbleEl) {
-  var clone = bubbleEl.cloneNode(true);
-  var btn = clone.querySelector('.btn-download-pdf');
-  if (btn) btn.remove();
-  var title = (document.querySelector('.header-title') && document.querySelector('.header-title').textContent) || '织镜报告';
-  var cssText = '';
-  document.querySelectorAll('style').forEach(function(s) { cssText += s.textContent + '\n'; });
-  var linkPromises = [];
-  document.querySelectorAll('link[rel=stylesheet]').forEach(function(link) {
-    linkPromises.push(fetch(link.href).then(function(r) { return r.text(); }).catch(function() { return ''; }));
-  });
-  Promise.all(linkPromises).then(function(linkCss) {
-    cssText += linkCss.filter(Boolean).join('\n');
-    var html = '<!DOCTYPE html><html lang=zh-CN><head><meta charset=UTF-8><title>' + title + '</title>' +
-      '<style>' +
-      '*{box-sizing:border-box}body{margin:0;padding:32px 48px;background:#fff;font-family:-apple-system,BlinkMacSystemFont,PingFang SC,Microsoft YaHei,sans-serif;color:#2c2416;font-size:13px;line-height:1.7}' +
-      '.btn-download-pdf{display:none!important}' +
-      cssText +
-      '</style></head><body>' + clone.outerHTML + '</body></html>';
-    var win = window.open('', '_blank', 'width=900,height=700');
-    if (win) {
-      win.document.write(html);
-      win.document.close();
-      requestAnimationFrame(function() {
-        requestAnimationFrame(function() {
-          win.print();
-        });
-      });
-    } else {
-      var w2 = window.open('', '_blank');
-      if (w2) {
-        w2.document.write(html);
-        w2.document.close();
-        requestAnimationFrame(function() {
-          requestAnimationFrame(function() {
-            w2.print();
-          });
-        });
-      }
+  // 从 dataset 重建干净内容（不含下载按钮、内联 padding 等 UI 残留）
+  var bodyHtml;
+  var jsonStr = bubbleEl.dataset.reportJson;
+  if (jsonStr) {
+    try {
+      bodyHtml = renderReport(JSON.parse(jsonStr));
+    } catch(e) {
+      bodyHtml = bubbleEl.innerHTML;
     }
-  });
+  } else {
+    bodyHtml = bubbleEl.innerHTML;
+  }
+
+  // 自包含的预览 CSS：只复制报告组件需要的样式，不依赖 style.css
+  var previewCSS =
+    ':root{' +
+      '--bg-secondary:#f3efe7;--bg-card:#fff;--text-primary:#2c2416;' +
+      '--text-secondary:#6b5e4a;--text-light:#a89b85;' +
+      '--accent-rose:#c8956c;--accent-rose-light:#e8c9b0;' +
+      '--accent-gold:#b8944e;--accent-sage:#8b9d83;--accent-cream:#f5ebe0;' +
+      '--border-light:#e5dcd0;--shadow-sm:0 1px 3px rgba(44,36,22,0.06);' +
+      '--shadow-md:0 4px 16px rgba(44,36,22,0.08);' +
+      '--radius-sm:8px;--radius-md:12px;--radius-lg:16px;' +
+      '--font-heading:Georgia,\"Songti SC\",\"STSong\",serif;' +
+      '--font-body:-apple-system,BlinkMacSystemFont,\"PingFang SC\",sans-serif' +
+    '}' +
+    '*{box-sizing:border-box;margin:0;padding:0}' +
+    'body{padding:36px 48px;font-family:var(--font-body);color:var(--text-primary);' +
+      'font-size:13px;line-height:1.7;background:#fff}' +
+    'h3{font-family:var(--font-heading);font-size:16px;margin:6px 0 8px}' +
+    'h4{font-size:14px;margin:8px 0 6px;font-weight:600}' +
+    'p{margin:6px 0}' +
+    'table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12px}' +
+    'th{background:var(--bg-secondary);padding:8px 10px;text-align:left;' +
+      'color:var(--text-secondary);font-weight:500}' +
+    'td{padding:8px 10px;border-bottom:1px solid var(--border-light)}' +
+    'ul,ol{padding-left:18px;margin:6px 0}' +
+    'li{margin:3px 0}' +
+    '.rc-metrics{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}' +
+    '.rc-metric{flex:1 1 120px;min-width:110px;max-width:200px;' +
+      'background:var(--bg-secondary);border-radius:var(--radius-sm);' +
+      'padding:12px 14px;text-align:center;border-left:3px solid var(--accent-rose)}' +
+    '.rc-metric .val{font-size:20px;font-weight:700;color:var(--accent-rose);display:block}' +
+    '.rc-metric .lbl{font-size:11px;color:var(--text-light);margin-top:4px}' +
+    '.rc-metric.accent-gold{border-left-color:var(--accent-gold)}' +
+    '.rc-metric.accent-gold .val{color:var(--accent-gold)}' +
+    '.rc-metric.accent-sage{border-left-color:var(--accent-sage)}' +
+    '.rc-metric.accent-sage .val{color:var(--accent-sage)}' +
+    '.rc-bar-chart{margin:12px 0}' +
+    '.rc-bar-row{display:flex;align-items:center;gap:8px;margin:6px 0}' +
+    '.rc-bar-label{min-width:60px;font-size:12px;color:var(--text-secondary);text-align:right}' +
+    '.rc-bar-track{flex:1;height:18px;background:var(--bg-secondary);border-radius:4px}' +
+    '.rc-bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;' +
+      'padding-left:8px;font-size:11px;color:#fff;font-weight:500;min-width:24px}' +
+    '.rc-bar-fill.c1{background:var(--accent-rose)}' +
+    '.rc-bar-fill.c2{background:var(--accent-gold)}' +
+    '.rc-bar-fill.c3{background:var(--accent-sage)}' +
+    '.rc-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px;' +
+      'border-radius:var(--radius-sm);border:1px solid var(--border-light)}' +
+    '.rc-table thead th{background:var(--accent-rose);color:#fff;padding:10px 12px;' +
+      'font-weight:500;font-size:11px;text-align:left}' +
+    '.rc-table thead th:first-child{background:#7a5a3e}' +
+    '.rc-table tbody td{padding:9px 12px;border-bottom:1px solid var(--border-light);' +
+      'background:var(--bg-card)}' +
+    '.rc-table tbody tr:nth-child(even) td{background:var(--bg-secondary)}' +
+    '.rc-table tbody td:first-child{font-weight:500;color:var(--text-secondary)}' +
+    '.rc-compare{display:flex;gap:12px;margin:14px 0;flex-wrap:wrap}' +
+    '.rc-brand-card{flex:1;min-width:160px;border:2px solid var(--border-light);' +
+      'border-radius:var(--radius-md);background:var(--bg-card)}' +
+    '.rc-brand-card.brand-a{border-top:3px solid var(--accent-rose)}' +
+    '.rc-brand-card.brand-b{border-top:3px solid var(--accent-gold)}' +
+    '.rc-brand-card .brand-header{padding:12px 16px 8px;font-family:var(--font-heading);' +
+      'font-size:15px;font-weight:600}' +
+    '.rc-brand-card.brand-a .brand-header{color:var(--accent-rose)}' +
+    '.rc-brand-card.brand-b .brand-header{color:var(--accent-gold)}' +
+    '.rc-brand-card .brand-body{padding:0 16px 14px;font-size:12px;line-height:1.8}' +
+    '.rc-brand-card .brand-body .row{display:flex;justify-content:space-between;' +
+      'padding:3px 0;border-bottom:1px dotted var(--border-light)}' +
+    '.rc-brand-card .brand-body .row .k{color:var(--text-light)}' +
+    '.rc-brand-card .brand-body .row .v{font-weight:500}' +
+    '.rc-section-title{font-family:var(--font-heading);font-size:15px;' +
+      'color:var(--accent-rose);margin:20px 0 12px;padding-bottom:8px;' +
+      'border-bottom:2px solid var(--accent-rose-light);letter-spacing:.5px}' +
+    '.rc-section-title.gold{color:var(--accent-gold);border-color:#e0d0a0}' +
+    '.rc-section-title.sage{color:var(--accent-sage);border-color:#c0d0b8}' +
+    '.rc-swot-wrap{margin:18px 0}' +
+    '.rc-swot-title{font-family:var(--font-heading);font-size:14px;' +
+      'color:var(--text-primary);margin-bottom:12px;display:flex;align-items:center;gap:8px}' +
+    '.rc-swot-title .brand-tag{font-size:10px;padding:3px 12px;border-radius:12px;font-weight:600}' +
+    '.rc-swot-title .brand-tag.a{background:var(--accent-cream);color:var(--accent-rose)}' +
+    '.rc-swot-title .brand-tag.b{background:#faf5e8;color:var(--accent-gold)}' +
+    '.rc-swot{display:grid;grid-template-columns:1fr 1fr;gap:10px}' +
+    '.rc-swot-cell{background:var(--bg-card);border-radius:var(--radius-md);' +
+      'border:1px solid var(--border-light)}' +
+    '.rc-swot-cell .cell-head{padding:10px 14px;display:flex;align-items:center;' +
+      'gap:8px;font-size:13px;font-weight:600;color:#fff}' +
+    '.rc-swot-cell.s .cell-head{background:linear-gradient(135deg,#8b9d83,#a3b89a)}' +
+    '.rc-swot-cell.w .cell-head{background:linear-gradient(135deg,#d4a853,#e0c080)}' +
+    '.rc-swot-cell.o .cell-head{background:linear-gradient(135deg,#6b8fb8,#8aadd4)}' +
+    '.rc-swot-cell.t .cell-head{background:linear-gradient(135deg,#c08070,#d4a090)}' +
+    '.rc-swot-cell .cell-body{padding:10px 14px 12px}' +
+    '.rc-swot-cell .cell-body li{font-size:12px;line-height:1.7;color:var(--text-secondary);' +
+      'margin:2px 0;padding-left:2px;list-style:none}' +
+    '.rc-swot-cell.s .cell-body{border-left:3px solid #8b9d83}' +
+    '.rc-swot-cell.w .cell-body{border-left:3px solid #d4a853}' +
+    '.rc-swot-cell.o .cell-body{border-left:3px solid #6b8fb8}' +
+    '.rc-swot-cell.t .cell-body{border-left:3px solid #c08070}' +
+    '.rc-insight{width:100%;padding:14px 18px;border-radius:var(--radius-sm);' +
+      'margin:12px 0;font-size:13px;line-height:1.75;border-left:4px solid}' +
+    '.rc-insight.tip{background:#f0f7f0;border-color:var(--accent-sage)}' +
+    '.rc-insight.warn{background:#fef9f0;border-color:#e0a060}' +
+    '.rc-insight.danger{background:#fef5f5;border-color:#c06050}' +
+    '.rc-insight strong{display:block;margin-bottom:4px}' +
+    '.rc-footer-note{margin-top:20px;padding:8px 12px;background:var(--bg-secondary);' +
+      'border-radius:var(--radius-sm);font-size:10px;color:var(--text-light);text-align:center}' +
+    '.rc-score-ring{display:inline-flex;align-items:center;justify-content:center;' +
+      'width:56px;height:56px;border-radius:50%;border:3px solid var(--accent-rose);' +
+      'font-size:20px;font-weight:700;color:var(--accent-rose);margin:0 6px}' +
+    '.rc-score-ring.high{border-color:var(--accent-sage);color:var(--accent-sage)}' +
+    '.rc-score-ring.mid{border-color:var(--accent-gold);color:var(--accent-gold)}' +
+    '@page{size:A4;margin:20mm}' +
+    '@media print{body{padding:0;margin:0}}' +
+    '*{print-color-adjust:exact;-webkit-print-color-adjust:exact}';
+
+  var html = '<!DOCTYPE html><html lang=zh-CN><head>' +
+    '<meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1.0">' +
+    '<title>织镜报告</title>' +
+    '<style>' + previewCSS + '</style></head><body>' +
+    bodyHtml +
+    '<script>window.onload=function(){setTimeout(function(){window.print()},300)};<\/script>' +
+    '</body></html>';
+
+  var win = window.open('about:blank', '_blank', 'width=960,height=720,scrollbars=yes,resizable=yes');
+  if (!win) { alert('弹窗被拦截'); return; }
+  win.document.write(html);
+  win.document.close();
 }

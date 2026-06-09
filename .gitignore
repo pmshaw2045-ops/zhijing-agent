@@ -13,3 +13,5 @@ build/
 htmlcov/
 .ruff_cache/
 *.html
+data/*.db
+data/*.sqlite

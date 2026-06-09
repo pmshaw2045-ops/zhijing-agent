@@ -122,7 +122,7 @@ async def sse_js():
 async def handler_js():
     return HTMLResponse((FRONTEND_DIR / "handler.js").read_text(encoding="utf-8"),
                         media_type="application/javascript",
-                        headers={"Cache-Control": "no-cache"})
+                        headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"})
 
 
 @app.get("/render.js")
