@@ -399,54 +399,41 @@ function injectDownloadBtn(bubbleEl) {
 }
 
 function downloadPDF(bubbleEl) {
-  // 加载 html2canvas + jsPDF（CDN，一次性）
-  if (typeof html2canvas === 'undefined') {
-    var s1 = document.createElement('script');
-    s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-    s1.onload = function() {
-      var s2 = document.createElement('script');
-      s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-      s2.onload = function() { _captureAndSavePDF(bubbleEl); };
-      document.head.appendChild(s2);
-    };
-    document.head.appendChild(s1);
-  } else {
-    _captureAndSavePDF(bubbleEl);
-  }
-}
-
-function _captureAndSavePDF(bubbleEl) {
-  var originalOverflow = document.body.style.overflow;
-  var originalHeight = bubbleEl.style.height;
-  // 展开完整内容防止截图被截断
-  bubbleEl.style.height = 'auto';
-  document.body.style.overflow = 'visible';
-  
-  html2canvas(bubbleEl, {
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    backgroundColor: '#ffffff',
-    // 等待字体和图片加载
-    windowWidth: bubbleEl.scrollWidth + 40,
-  }).then(function(canvas) {
-    var imgData = canvas.toDataURL('image/jpeg', 0.95);
-    var pdf = new jspdf.jsPDF({
-      orientation: canvas.width > canvas.height ? 'l' : 'p',
-      unit: 'px',
-      format: [canvas.width, canvas.height]
-    });
-    pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-    var title = (document.querySelector('.header-title') && document.querySelector('.header-title').textContent) || '织镜报告';
-    pdf.save(title.replace(/[\s]+/g, '_') + '.pdf');
-    
-    // 恢复样式
-    bubbleEl.style.height = originalHeight;
-    document.body.style.overflow = originalOverflow;
-  }).catch(function(err) {
-    console.warn('PDF generation failed, falling back to print:', err);
-    window.print();
-    bubbleEl.style.height = originalHeight;
-    document.body.style.overflow = originalOverflow;
+  var clone = bubbleEl.cloneNode(true);
+  var btn = clone.querySelector('.btn-download-pdf');
+  if (btn) btn.remove();
+  var title = (document.querySelector('.header-title') && document.querySelector('.header-title').textContent) || '织镜报告';
+  // 收集所有样式（<link> + <style>）
+  var cssPromises = [];
+  document.querySelectorAll('link[rel=stylesheet]').forEach(function(link) {
+    cssPromises.push(fetch(link.href).then(function(r) { return r.text(); }).catch(function() { return ''; }));
+  });
+  document.querySelectorAll('style').forEach(function(s) { cssPromises.push(Promise.resolve(s.textContent)); });
+  Promise.all(cssPromises).then(function(cssParts) {
+    var cssText = cssParts.filter(Boolean).join('\n');
+    var html = '<!DOCTYPE html><html lang=zh-CN><head><meta charset=UTF-8><title>' + title + '</title><style>' +
+      '*{box-sizing:border-box}body{margin:0;padding:32px 48px;background:#fff;font-family:-apple-system,BlinkMacSystemFont,PingFang SC,Microsoft YaHei,sans-serif;color:#2c2416;font-size:13px;line-height:1.7}' +
+      '.msg-bubble{max-width:100%!important;padding:0;border:none;border-radius:0;background:transparent;box-shadow:none}' +
+      '.btn-download-pdf{display:none!important}' +
+      '@page{size:A4;margin:12mm}@media print{body{padding:0;background:#fff}}' +
+      cssText + '</style></head><body><div style="max-width:780px;margin:0 auto">' + clone.innerHTML + '</div></body></html>';
+    var win = window.open('', '_blank', 'width=900,height=700');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+      setTimeout(function() { win.focus(); win.print(); }, 500);
+    } else {
+      // 弹窗被拦截 → iframe 兜底
+      var iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      var doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open(); doc.write(html); doc.close();
+      setTimeout(function() {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        setTimeout(function() { document.body.removeChild(iframe); }, 1000);
+      }, 500);
+    }
   });
 }
