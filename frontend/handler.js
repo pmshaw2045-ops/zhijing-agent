@@ -385,11 +385,13 @@ function injectDownloadBtn(bubbleEl) {
     downloadPDF(bubbleEl);
   });
   bubbleEl.appendChild(btn);
+  // 为按钮留出底部空间
+  bubbleEl.style.paddingBottom = '48px';
   // 添加样式（纯文本PDF下载按钮）
   if (!document.getElementById('_pdfDownloadStyle')) {
     var s = document.createElement('style');
     s.id = '_pdfDownloadStyle';
-    s.textContent = '.btn-download-pdf{position:absolute;top:12px;right:12px;padding:5px 12px;border:1px solid var(--border-light,#ddd);border-radius:6px;background:var(--bg-card,#fff);color:var(--text-secondary,#666);font-size:11px;cursor:pointer;transition:all .2s;z-index:10}.btn-download-pdf:hover{border-color:var(--accent-rose,#c47);color:var(--accent-rose,#c47)}';
+    s.textContent = '.btn-download-pdf{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);padding:6px 18px;border:1px solid var(--border-light,#ddd);border-radius:8px;background:var(--bg-card,#fff);color:var(--text-secondary,#666);font-size:12px;cursor:pointer;transition:all .2s;z-index:10;white-space:nowrap}.btn-download-pdf:hover{border-color:var(--accent-rose,#c47);color:var(--accent-rose,#c47);background:var(--bg-secondary,#faf8f5)}';
     document.head.appendChild(s);
   }
 }

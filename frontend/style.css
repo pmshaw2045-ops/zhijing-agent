@@ -58,7 +58,7 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
 .msg-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
 .msg-avatar.agent { background: var(--accent-cream); color: var(--accent-rose); }
 .msg-avatar.user { background: var(--accent-rose); color: white; }
-.msg-bubble { max-width: 96%; padding: 16px 20px; border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px; background: var(--bg-card); border: 1px solid var(--border-light); font-size: 13px; line-height: 1.7; box-shadow: var(--shadow-sm); overflow-wrap: break-word; word-break: break-word; }
+.msg-bubble { max-width: 96%; padding: 16px 20px; border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px; background: var(--bg-card); border: 1px solid var(--border-light); font-size: 13px; line-height: 1.7; box-shadow: var(--shadow-sm); overflow-wrap: break-word; word-break: break-word; position: relative; }
 .msg-bubble h3 { font-family: var(--font-heading); font-size: 16px; margin: 6px 0 8px; }
 .msg-bubble h4 { font-size: 14px; margin: 8px 0 6px; font-weight: 600; }
 .msg-bubble p { margin: 6px 0; font-size: 13px; }
