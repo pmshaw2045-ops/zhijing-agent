@@ -439,7 +439,7 @@ function downloadPDF(bubbleEl) {
     'ul,ol{padding-left:18px;margin:6px 0}' +
     'li{margin:3px 0}' +
     '.rc-metrics{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}' +
-    '.rc-metric{flex:1 1 120px;min-width:110px;max-width:200px;' +
+    '.rc-metric{flex:1 1 120px;min-width:110px;' +
       'background:var(--bg-secondary);border-radius:var(--radius-sm);' +
       'padding:12px 14px;text-align:center;border-left:3px solid var(--accent-rose)}' +
     '.rc-metric .val{font-size:20px;font-weight:700;color:var(--accent-rose);display:block}' +
@@ -520,6 +520,21 @@ function downloadPDF(bubbleEl) {
       'font-size:20px;font-weight:700;color:var(--accent-rose);margin:0 6px}' +
     '.rc-score-ring.high{border-color:var(--accent-sage);color:var(--accent-sage)}' +
     '.rc-score-ring.mid{border-color:var(--accent-gold);color:var(--accent-gold)}' +
+    '.rc-swot-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}' +
+    '.rc-table-wrap{overflow-x:auto;margin:12px 0;border-radius:var(--radius-sm);border:1px solid var(--border-light)}' +
+    '.rc-table-wrap .rc-table{margin:0;border:none;border-radius:0}' +
+    '.rc-table-fallback{width:100%;border-collapse:collapse;font-size:12px}' +
+    '.rc-table-fallback th{background:var(--bg-secondary);padding:8px 10px;text-align:left;font-weight:600;border-bottom:2px solid var(--border-light)}' +
+    '.rc-table-fallback td{padding:8px 10px;border-bottom:1px solid var(--border-light)}' +
+    '.rc-section-title strong{font-weight:inherit;color:inherit}' +
+    '.rc-swot-wrap.brand-b .rc-swot-cell.s .cell-head{background:linear-gradient(135deg,#a89060,#c4ad80)}' +
+    '.rc-swot-wrap.brand-b .rc-swot-cell.w .cell-head{background:linear-gradient(135deg,#c8956c,#d4a888)}' +
+    '.rc-swot-wrap.brand-b .rc-swot-cell.o .cell-head{background:linear-gradient(135deg,#b8944e,#ccaa66)}' +
+    '.rc-swot-wrap.brand-b .rc-swot-cell.t .cell-head{background:linear-gradient(135deg,#b87060,#cc8a78)}' +
+    '.rc-swot-wrap.brand-b .rc-swot-cell.s .cell-body{border-left-color:#a89060}' +
+    '.rc-swot-wrap.brand-b .rc-swot-cell.w .cell-body{border-left-color:#c8956c}' +
+    '.rc-swot-wrap.brand-b .rc-swot-cell.o .cell-body{border-left-color:#b8944e}' +
+    '.rc-swot-wrap.brand-b .rc-swot-cell.t .cell-body{border-left-color:#b87060}' +
     '@page{size:A4;margin:20mm}' +
     '@media print{body{padding:0;margin:0}}' +
     '*{print-color-adjust:exact;-webkit-print-color-adjust:exact}';
