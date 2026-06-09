@@ -57,7 +57,7 @@
 
 ### 2.1 技术栈
 
-|| 层 | 技术选型 | 说明 |
+| 层 | 技术选型 | 说明 |
 |:---|:---|:---|
 | 后端框架 | Python 3.11 + FastAPI | 异步 SSE 流式响应 |
 | LLM | 任意 OpenAI 兼容 API（可配置） | 三级模型分级 flash/pro/chat |
@@ -65,7 +65,7 @@
 | 搜索 | 配置化路由：Tavily / 博查 | 统一 SEARCH_API_KEY，支持 auto/tavily/bocha |
 | 前端 | 单文件 HTML/CSS/JS | 暖色调设计系统，CSS 变量体系 |
 | 存储 | JSON 文件（SQLite 可切换） | data/memory_store.json，async flush |
-| 部署 | Docker + uvicorn | 单容器，健康检查，Bcacher Token 认证 |
+| 部署 | Docker + uvicorn | 单容器，健康检查，Bearer Token 认证 |
 
 ### 2.2 模块架构
 
