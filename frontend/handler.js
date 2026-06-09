@@ -403,37 +403,35 @@ function downloadPDF(bubbleEl) {
   var btn = clone.querySelector('.btn-download-pdf');
   if (btn) btn.remove();
   var title = (document.querySelector('.header-title') && document.querySelector('.header-title').textContent) || '织镜报告';
-  // 收集所有样式（<link> + <style>）
-  var cssPromises = [];
+  var cssText = '';
+  // 收集 inline <style>
+  document.querySelectorAll('style').forEach(function(s) { cssText += s.textContent + '\n'; });
+  // fetch <link> 样式表
+  var linkPromises = [];
   document.querySelectorAll('link[rel=stylesheet]').forEach(function(link) {
-    cssPromises.push(fetch(link.href).then(function(r) { return r.text(); }).catch(function() { return ''; }));
+    linkPromises.push(fetch(link.href).then(function(r) { return r.text(); }).catch(function() { return ''; }));
   });
-  document.querySelectorAll('style').forEach(function(s) { cssPromises.push(Promise.resolve(s.textContent)); });
-  Promise.all(cssPromises).then(function(cssParts) {
-    var cssText = cssParts.filter(Boolean).join('\n');
-    var html = '<!DOCTYPE html><html lang=zh-CN><head><meta charset=UTF-8><title>' + title + '</title><style>' +
+  Promise.all(linkPromises).then(function(linkCss) {
+    cssText += linkCss.filter(Boolean).join('\n');
+    var html = '<!DOCTYPE html><html lang=zh-CN><head><meta charset=UTF-8><title>' + title + '</title>' +
+      '<style>' +
       '*{box-sizing:border-box}body{margin:0;padding:32px 48px;background:#fff;font-family:-apple-system,BlinkMacSystemFont,PingFang SC,Microsoft YaHei,sans-serif;color:#2c2416;font-size:13px;line-height:1.7}' +
-      '.msg-bubble{max-width:100%!important;padding:0;border:none;border-radius:0;background:transparent;box-shadow:none}' +
       '.btn-download-pdf{display:none!important}' +
-      '@page{size:A4;margin:12mm}@media print{body{padding:0;background:#fff}}' +
-      cssText + '</style></head><body><div style="max-width:780px;margin:0 auto">' + clone.innerHTML + '</div></body></html>';
+      cssText +
+      '</style></head><body>' + clone.outerHTML + '</body></html>';
     var win = window.open('', '_blank', 'width=900,height=700');
     if (win) {
       win.document.write(html);
       win.document.close();
-      setTimeout(function() { win.focus(); win.print(); }, 500);
+      // 等窗口渲染完成再触发打印
+      win.onload = function() { setTimeout(function() { win.print(); }, 200); };
     } else {
-      // 弹窗被拦截 → iframe 兜底
       var iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       document.body.appendChild(iframe);
       var doc = iframe.contentDocument || iframe.contentWindow.document;
       doc.open(); doc.write(html); doc.close();
-      setTimeout(function() {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        setTimeout(function() { document.body.removeChild(iframe); }, 1000);
-      }, 500);
+      iframe.onload = function() { setTimeout(function() { iframe.contentWindow.print(); document.body.removeChild(iframe); }, 500); };
     }
   });
 }
