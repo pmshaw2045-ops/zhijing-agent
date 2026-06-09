@@ -399,5 +399,54 @@ function injectDownloadBtn(bubbleEl) {
 }
 
 function downloadPDF(bubbleEl) {
-  window.print();
+  // 加载 html2canvas + jsPDF（CDN，一次性）
+  if (typeof html2canvas === 'undefined') {
+    var s1 = document.createElement('script');
+    s1.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    s1.onload = function() {
+      var s2 = document.createElement('script');
+      s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      s2.onload = function() { _captureAndSavePDF(bubbleEl); };
+      document.head.appendChild(s2);
+    };
+    document.head.appendChild(s1);
+  } else {
+    _captureAndSavePDF(bubbleEl);
+  }
+}
+
+function _captureAndSavePDF(bubbleEl) {
+  var originalOverflow = document.body.style.overflow;
+  var originalHeight = bubbleEl.style.height;
+  // 展开完整内容防止截图被截断
+  bubbleEl.style.height = 'auto';
+  document.body.style.overflow = 'visible';
+  
+  html2canvas(bubbleEl, {
+    scale: 2,
+    useCORS: true,
+    logging: false,
+    backgroundColor: '#ffffff',
+    // 等待字体和图片加载
+    windowWidth: bubbleEl.scrollWidth + 40,
+  }).then(function(canvas) {
+    var imgData = canvas.toDataURL('image/jpeg', 0.95);
+    var pdf = new jspdf.jsPDF({
+      orientation: canvas.width > canvas.height ? 'l' : 'p',
+      unit: 'px',
+      format: [canvas.width, canvas.height]
+    });
+    pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+    var title = (document.querySelector('.header-title') && document.querySelector('.header-title').textContent) || '织镜报告';
+    pdf.save(title.replace(/[\s]+/g, '_') + '.pdf');
+    
+    // 恢复样式
+    bubbleEl.style.height = originalHeight;
+    document.body.style.overflow = originalOverflow;
+  }).catch(function(err) {
+    console.warn('PDF generation failed, falling back to print:', err);
+    window.print();
+    bubbleEl.style.height = originalHeight;
+    document.body.style.overflow = originalOverflow;
+  });
 }
