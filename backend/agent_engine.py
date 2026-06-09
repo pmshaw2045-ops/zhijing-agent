@@ -249,17 +249,26 @@ class AgentEngine:
         trace_id = self.tracer.start(session_id, user_input)
         yield {"type": "phase", "phase": "start", "data": {"input": user_input, "session_id": session_id}}
 
-        # ====== Phase 0: 多轮场景检测 + 查询增强 ======
+        # ====== Phase 0: 多轮场景检测 + 实体提取 + 结构化 goal 合并 ======
         last_intent = self.memory.get_working_memory(session_id).get("last_intent", "")
         scenario = self.conversation.detect_scenario(user_input, last_intent)
         is_followup = self.conversation.is_followup(user_input)
+        intent_modified = False
+        changes = None
         if scenario != Scenario.NEW_QUERY:
             wm = self.memory.get_working_context(session_id)
-            enhanced_query = self.conversation.augment_query(user_input, scenario, wm)
+            last_analysis = wm.get("last_analysis", {})
+            if last_analysis:
+                changes = self.conversation.extract_entities_from_followup(
+                    user_input, last_analysis)
+                if changes:
+                    intent_modified = True
+                    user_input = f"__followup_merge__{json.dumps(changes, ensure_ascii=False)}__"
             yield {"type": "phase", "phase": "conversation", "status": "done",
                    "data": {"scenario": scenario.name, "is_followup": is_followup,
-                   "enhanced": enhanced_query != user_input}}
-            user_input = enhanced_query
+                   "enhanced": intent_modified, "entity_changes": changes}}
+            if not intent_modified:
+                user_input = self.conversation.augment_query(user_input, scenario, wm)
 
         # ====== 缓存检查 (24h相同query命中, 在LLM调用前) ======
         cache_key = f"{user_input}|{mode or 'auto'}"
@@ -281,6 +290,21 @@ class AgentEngine:
         detected_mode = self.intent_router.route(intent)
         yield {"type": "phase", "phase": "intent", "status": "done",
                "data": {"intent": intent, "auto_routed": detected_mode}}
+
+        # ====== Phase 1.2: 实体提取 — 追问合并到 intent.goal ======
+        if intent_modified and changes:
+            last_goal = intent.get("goal", {})
+            merged_goal = self.conversation.merge_goal(last_goal, changes)
+            intent["goal"] = merged_goal
+            # 如果涉及意图切换，修正 intent_type
+            if changes.get("intent_type"):
+                intent["intent_type"] = changes["intent_type"]
+                detected_mode = self.intent_router.route(intent)
+                yield {"type": "phase", "phase": "router_redirect",
+                       "status": "done", "data": {"old_mode": detected_mode,
+                       "reason": f"追问切换意图至{changes['intent_type']}"}}
+            # 重新生成 user_input 供缓存校验使用
+            user_input = json.dumps(intent.get("goal", {}), ensure_ascii=False)
 
         # ====== Phase 1.5: 无法识别或置信度过低 → 直接返回友好提示 ======
         unknown_intent = detected_mode == "unknown"
@@ -384,8 +408,20 @@ class AgentEngine:
             return
 
         # ====== Phase 6: 报告生成 (deepseek-chat, 低延迟)
+        # 注入同类目历史分析参考
+        category = intent.get("goal", {}).get("品类", "") or intent.get("entities", {}).get("category", "")
+        related_history = self.memory.find_related_analyses(session_id, category,
+                                                             intent.get("intent_type", ""))
+        history_context = ""
+        if related_history:
+            lines = []
+            for h in related_history:
+                ts = time.strftime("%m-%d", time.localtime(h.get("timestamp", 0)))
+                lines.append(f"- [{ts}] {h.get('query', '')[:40]}：{h.get('key_findings', '')[:120]}")
+            history_context = "\n\n【历史分析参考】\n您此前对相关主题做过分析：\n" + "\n".join(lines) + "\n\n请参考以上历史结论，补充趋势变化和新发现。"
         yield {"type": "phase", "phase": "report", "status": "running", "model": MODEL_CHAT}
         p_report = self.report_builder.build_prompt(intent, detected_mode, exec_results, session_id)
+        p_report += history_context
         yield {"type": "prompt", "phase": "report", "model": MODEL_CHAT, "prompt": p_report, "label": "Phase 6: 报告生成"}
         report = await self.report_builder.generate(intent, detected_mode, exec_results, session_id, prompt=p_report)
         yield {"type": "phase", "phase": "report", "status": "done", "data": {"generated": True, "length": len(report)}}
@@ -492,6 +528,29 @@ class AgentEngine:
             }}
 
         yield {"type": "result", "content": report}
+        # 同类目历史对比事件
+        if related_history:
+            current_summary = ""
+            try:
+                import re
+                m = re.search(r'"title"\s*:\s*"([^"]+)"', report)
+                if m:
+                    current_summary = m.group(1)[:100]
+            except Exception:
+                pass
+            previous = []
+            for h in related_history:
+                ts = time.strftime("%Y-%m-%d %H:%M", time.localtime(h.get("timestamp", 0)))
+                previous.append({
+                    "title": h.get("query", "")[:80],
+                    "summary": h.get("key_findings", "")[:200],
+                    "timestamp": ts,
+                    "intent": h.get("intent", ""),
+                })
+            yield {"type": "history_comparison", "data": {
+                "current": {"title": current_summary, "intent": intent.get("intent_type", "")},
+                "previous": previous,
+            }}
         # 写入缓存（24h，文件持久化）
         if len(report) > 100:
             self._report_cache[cache_key] = (time.time(), report)

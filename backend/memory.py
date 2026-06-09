@@ -323,6 +323,31 @@ class MemorySystem:
         self._ensure_session(session_id)["working"] = working
         self.mark_dirty()
 
+    def find_related_analyses(self, session_id: str, category: str,
+                               intent_type: str = "") -> list[dict]:
+        """查找同类目/同类意图的历史分析记录（按时间倒序，最多 3 条）"""
+        if not session_id or not (category or intent_type):
+            return []
+        session = self._get_session(session_id)
+        context = session.get("working", {}).get("context", {})
+        history = context.get("analysis_history", [])
+
+        related = []
+        for h in reversed(history):
+            # 匹配类目（包含关系：品类名出现在类目中或反之）
+            cat_match = category and (
+                category in h.get("category", "")
+                or h.get("category", "") in category
+            )
+            # 匹配意图
+            intent_match = intent_type and h.get("intent", "") == intent_type
+
+            if cat_match or intent_match:
+                related.append(h)
+                if len(related) >= 3:
+                    break
+        return related
+
     def get_working_context(self, session_id: str) -> dict:
         """获取增强的工作记忆上下文"""
         working = self.get_working_memory(session_id)

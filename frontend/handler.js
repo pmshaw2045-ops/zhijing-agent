@@ -151,6 +151,27 @@ function handleSSEEvent(event, bubble) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
     clog('success', '图片生成完成 ✅ URL已渲染到对话区');
 
+  } else if (type === 'history_comparison') {
+    // 同类目历史对比展示
+    var d = event.data || {};
+    var current = d.current || {};
+    var previous = d.previous || [];
+    if (previous.length) {
+      var html = '<div style="margin-top:16px;padding:12px 16px;background:#f8f6f0;border-left:3px solid #c0a878;border-radius:6px;font-size:12px;color:#665533">';
+      html += '<div style="font-weight:600;margin-bottom:8px">📊 历史分析对比</div>';
+      html += '<div style="margin-bottom:6px"><strong>本次：</strong>' + (current.title || '当前报告') + '</div>';
+      html += '<div style="font-size:11px;color:#887744">此前相关分析：</div>';
+      previous.forEach(function(h) {
+        html += '<div style="margin:4px 0 4px 8px;padding:4px 8px;background:rgba(255,255,255,0.6);border-radius:4px">';
+        html += '<span style="color:#998855;font-size:10px">[' + h.timestamp + ']</span> ';
+        html += '<strong>' + (h.title || '') + '</strong>';
+        html += '<div style="color:#776644;font-size:11px;margin-top:2px">' + (h.summary || '') + '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      bubble.querySelector('.msg-bubble').insertAdjacentHTML('beforeend', html);
+    }
+
   } else if (type === 'prompt') {
     var label = event.label || ('Phase: ' + (event.phase || '?'));
     var model = event.model || '?';
