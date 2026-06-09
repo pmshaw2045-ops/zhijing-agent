@@ -403,7 +403,6 @@ function downloadPDF(bubbleEl) {
   var btn = clone.querySelector('.btn-download-pdf');
   if (btn) btn.remove();
   var title = (document.querySelector('.header-title') && document.querySelector('.header-title').textContent) || '织镜报告';
-  // 收集所有 CSS
   var cssText = '';
   document.querySelectorAll('style').forEach(function(s) { cssText += s.textContent + '\n'; });
   var linkPromises = [];
@@ -418,31 +417,26 @@ function downloadPDF(bubbleEl) {
       '.btn-download-pdf{display:none!important}' +
       cssText +
       '</style></head><body>' + clone.outerHTML + '</body></html>';
-    var blob = new Blob([html], {type: 'text/html'});
-    var url = URL.createObjectURL(blob);
-    var win = window.open(url, '_blank', 'width=900,height=700');
+    var win = window.open('', '_blank', 'width=900,height=700');
     if (win) {
-      win.onload = function() {
+      win.document.write(html);
+      win.document.close();
+      requestAnimationFrame(function() {
         requestAnimationFrame(function() {
-          requestAnimationFrame(function() { win.print(); });
+          win.print();
         });
-      };
+      });
     } else {
-      // 弹窗被拦截 → blob URL + location 兜底
       var w2 = window.open('', '_blank');
       if (w2) {
-        w2.location = url;
-        var checkInterval = setInterval(function() {
-          if (w2.document.readyState === 'complete') {
-            clearInterval(checkInterval);
-            requestAnimationFrame(function() {
-              requestAnimationFrame(function() { w2.print(); });
-            });
-          }
-        }, 100);
+        w2.document.write(html);
+        w2.document.close();
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            w2.print();
+          });
+        });
       }
     }
-    // 30秒后释放 blob URL
-    setTimeout(function() { URL.revokeObjectURL(url); }, 30000);
   });
 }
