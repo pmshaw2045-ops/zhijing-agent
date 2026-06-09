@@ -379,7 +379,7 @@ function injectDownloadBtn(bubbleEl) {
   var btn = document.createElement('button');
   btn.className = 'btn-download-pdf';
   btn.title = '下载PDF报告';
-  btn.innerHTML = '📄 下载PDF';
+  btn.innerHTML = '下载PDF';
   btn.addEventListener('click', function(e) {
     e.stopPropagation();
     downloadPDF(bubbleEl);
@@ -400,24 +400,20 @@ function downloadPDF(bubbleEl) {
   var clone = bubbleEl.cloneNode(true);
   var btn = clone.querySelector('.btn-download-pdf');
   if (btn) btn.remove();
-  var styles = document.querySelectorAll('style, link[rel=stylesheet]');
+  var styleBlocks = document.querySelectorAll('style');
   var cssText = '';
-  styles.forEach(function(s) { cssText += s.textContent || s.href ? '@import url(' + s.href + ');' : ''; });
-  // 收集内联样式
-  document.querySelectorAll('style').forEach(function(s) { cssText += s.textContent; });
+  styleBlocks.forEach(function(s) { cssText += s.textContent; });
   var title = (document.querySelector('.header-title') && document.querySelector('.header-title').textContent) || '织镜报告';
-  var html = '<!DOCTYPE html><html lang=zh-CN><head><meta charset=UTF-8><title>' + title + '</title><style>' +
-    '*{box-sizing:border-box}body{margin:0;padding:32px 40px;background:#fff;font-family:-apple-system,BlinkMacSystemFont,PingFang SC,Microsoft YaHei,sans-serif;color:#2c2416;font-size:13px;line-height:1.7}' +
+  var printCss = '.btn-download-pdf,.console-panel,.header-status,.header-meta,.btn-toggle-console,.chat-input-area,.quick-actions{display:none!important}' +
+    '.message{max-width:100%!important}' +
     '.msg-bubble{max-width:100%!important;padding:0;border:none;border-radius:0;background:transparent;box-shadow:none}' +
-    '.btn-download-pdf,.console-panel,.header-status{display:none!important}' +
-    '@page{size:A4;margin:12mm}@media print{body{padding:0}}' +
-    cssText +
-    '</style></head><body>' + clone.innerHTML + '</body></html>';
-  var blob = new Blob([html], {type: 'text/html'});
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = title.replace(/[\\s]+/g, '_') + '.html';
-  a.click();
-  URL.revokeObjectURL(url);
+    '@page{size:A4;margin:15mm}';
+  var html = '<!DOCTYPE html><html lang=zh-CN><head><meta charset=UTF-8><title>' + title + '</title>' +
+    '<style>' + printCss + cssText + '</style>' +
+    '</head><body>' + clone.innerHTML + '</body></html>';
+  var win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  win.print();
 }
