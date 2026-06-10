@@ -299,6 +299,9 @@ class AgentEngine:
         yield {"type": "phase", "phase": "report", "status": "done", "data": {"generated": True, "length": len(report)}}
 
         # ====== Phase 7: 反思修正 (CostRouter控制) ======
+        active_reflection = None
+        retry_history = []
+        final_score = 0
         if self.router.should_include_reflection(complexity):
             MAX_RETRIES = self.router.get_max_retries(complexity)
 
@@ -380,14 +383,14 @@ class AgentEngine:
         self.tracer.finish(trace_id, success=True)
 
         # 质量审查结果作为独立事件发送
-        if 'active_reflection' in dir() and active_reflection:
+        if active_reflection is not None:
             yield {"type": "quality_review", "data": {
                 "passed": active_reflection.get("passed", True),
                 "scores": active_reflection.get("scores", {}),
                 "verdict": active_reflection.get("verdict", ""),
                 "warnings": active_reflection.get("warnings", []),
-                "retried": len(retry_history) > 1 if 'retry_history' in dir() else False,
-                "shortfall": final_score < TARGET_SCORE if 'final_score' in dir() else False
+                "retried": len(retry_history) > 1,
+                "shortfall": final_score < TARGET_SCORE
             }}
 
         yield {"type": "result", "content": report}
