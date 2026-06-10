@@ -1,10 +1,9 @@
 """CostRouter — 查询复杂度判定 + 执行深度控制"""
 import logging
 
-logger = logging.getLogger(__name__)
-
-# Complexity 从 intent_registry 导入（避免循环依赖）
 from ..intent_registry import Complexity, INTENT_REGISTRY
+
+logger = logging.getLogger(__name__)
 
 # 意图基础复杂度映射（从 registry 构建：中文名→复杂度）
 _INTENT_COMPLEXITY = {info["name"]: info["complexity"] for info in INTENT_REGISTRY.values()}

@@ -4,9 +4,9 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-logger = logging.getLogger(__name__)
-
 from ..intent_registry import get_all_dags
+
+logger = logging.getLogger(__name__)
 
 # 默认 DAG 模板（从 registry 构建，兜底用）
 _DEFAULT_DAGS = get_all_dags()
