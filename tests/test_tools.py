@@ -169,7 +169,6 @@ class TestScoreCandidates:
         assert result.get("_llm_driven") is False
         assert "无候选" in result.get("summary", "")
 
-    @pytest.mark.xfail(reason="tools.py #138: _score_candidates prompt含{}和.format()冲突→KeyError，是既有Bug需Phase 2修复")
     def test_string_candidates(self):
         """candidates 是字符串 → 包装为列表"""
         import llm_client as llm_mod
@@ -183,7 +182,6 @@ class TestScoreCandidates:
         assert result.get("_llm_driven") is True
         assert result.get("tool") == "scoring_engine"
 
-    @pytest.mark.xfail(reason="同test_string_candidates — .format()与prompt中的{}冲突")
     def test_default_criteria_when_empty(self):
         """空 criteria → 使用默认评分维度"""
         import llm_client as llm_mod

@@ -340,10 +340,23 @@ def _score_candidates(params: dict) -> dict:
 输出JSON:
 {{"scores":[{{"candidate":"候选名","total":总分1-100,"dimensions":{{"维度名":分数}}}}],"summary":"综合评估"}}"""
 
-    result = _llm_extract(prompt, {}, str(candidates), "scoring_engine", max_tokens=600)
-    result["tool"] = "scoring_engine"
-    result["scored"] = len(candidates)
-    return result
+    # 直接调用 LLM，不走 _llm_extract（后者会对 prompt 二次 .format()，与 f-string 中的 {} 冲突）
+    try:
+        raw = chat_sync(prompt, model=MODEL_FLASH, max_tokens=600)
+        result = extract_json(raw)
+        if result:
+            result["data_source"] = "llm_knowledge"
+            result["_llm_driven"] = True
+            result["_llm_prompt"] = prompt
+            result["tool"] = "scoring_engine"
+            result["scored"] = len(candidates)
+            return result
+    except Exception as e:
+        logger.warning(f"scoring_engine LLM调用失败: {e}")
+
+    return {"tool": "scoring_engine", "error": "LLM调用失败", "scored": 0,
+            "data_source": "fallback", "_llm_driven": False,
+            "summary": "评分工具LLM调用失败，报告生成阶段将基于数据直接分析"}
 
 
 # ====== Sync Wrapper ======

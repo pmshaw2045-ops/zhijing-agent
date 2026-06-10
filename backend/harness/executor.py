@@ -75,9 +75,9 @@ class ParallelExecutor:
 
         for attempt in range(1, 4):  # 最多3次
             try:
-                result = self._exec(name, params)
-                if asyncio.iscoroutine(result):
-                    result = await asyncio.wait_for(result, timeout=timeout)
+                # 执行同步工具（搜索/LLM提取）。asyncio.to_thread 丢到线程池，不阻塞事件循环
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(self._exec, name, params), timeout=timeout)
                 return result
             except asyncio.TimeoutError:
                 last_error = f"timeout after {timeout}s"
