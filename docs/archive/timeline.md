@@ -55,4 +55,21 @@ timeline
         : CSS rc-swot-grid 兜底
         : 报告渲染三层修复
         : 回归测试脚本就位
+    section Phase 5 代码整顿
+        全面清理技术债
+        : DAG_TEMPLATES∤REPORT_TEMPLATES 死代码 -148行
+        : _score_candidates format() 冲突修复
+        : asyncio.to_thread 事件循环解阻塞
+        : 15处 try∤except ImportError 统一移除
+        : report_pipeline 代码去重
+        : 报告缓存 TTL 自动清理
+        : image_optimizer 内联+删除(－53行)
+        : 3处 dir() 反射检查消除
+        : agent_engine 616→490行
+    前端测试体系
+        : renderReport 修复+新增类型覆盖 → 20测试
+        : handler.js SSE事件分发 → 21测试
+        : sse.js 消息气泡∤SSE流解析 → 8测试
+        : console.js 全函数覆盖 → 10测试
+        : 前端合计 57测试, CI pytest+npm 双线并行
 ```
