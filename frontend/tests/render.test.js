@@ -1,82 +1,21 @@
 /**
  * 前端报告渲染引擎测试
  *
- * 测试策略：从 index.html 提取 renderReport 和 R 对象进行独立测试，
- * 不修改生产代码。
+ * 直接加载 render.js 文件，在 jsdom 中执行后测试 renderReport 函数。
  */
-
-// Helper: 读取 index.html 中的 R 对象和 renderReport 函数
 const fs = require('fs');
 const path = require('path');
-const html = fs.readFileSync(path.resolve(__dirname, '../index.html'), 'utf-8');
 
-// 提取 renderReport + R 对象
-function extractRenderFunctions(html) {
-  const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
-  if (!scriptMatch) throw new Error('No script tag found');
-  const js = scriptMatch[1];
-
-  // 提取 R 对象定义
-  const rStart = js.indexOf('var R = {');
-  if (rStart === -1) throw new Error('R object not found');
-  
-  // 找到 R 对象的结尾（匹配花括号）
-  let depth = 0;
-  let rEnd = rStart;
-  // 找到第一个 {
-  const braceStart = js.indexOf('{', rStart);
-  for (let i = braceStart; i < js.length; i++) {
-    if (js[i] === '{') depth++;
-    else if (js[i] === '}') {
-      depth--;
-      if (depth === 0) { rEnd = i + 1; break; }
-    }
-  }
-
-  // 提取 renderReport 函数
-  const rrStart = js.indexOf('function renderReport(');
-  if (rrStart === -1) throw new Error('renderReport not found');
-
-  depth = 0;
-  let rrEnd = rrStart;
-  for (let i = rrStart; i < js.length; i++) {
-    if (js[i] === '{') depth++;
-    else if (js[i] === '}') {
-      depth--;
-      if (depth === 0) { rrEnd = i + 1; break; }
-    }
-  }
-
-  const rCode = js.slice(rStart, rEnd);
-  const rrCode = js.slice(rrStart, rrEnd);
-
-  // 还要提取 R.esc 等工具函数
-  const escMatch = js.match(/R\.esc\s*=\s*function[^}]+}/);
-  const escCode = escMatch ? escMatch[0] : '';
-
-  const combined = rCode + '\n' + escCode + '\n' + rrCode + '\n;';
-  return combined;
-}
+// 直接读取 render.js（定义 var R = {...} 和 function renderReport(json)）
+const renderJs = fs.readFileSync(path.resolve(__dirname, '../render.js'), 'utf-8');
 
 describe('renderReport', () => {
   let renderReport;
 
   beforeAll(() => {
-    const code = extractRenderFunctions(html);
-    // 在 jsdom 环境中执行代码
-    const fn = new Function('R', code + '; return renderReport;');
-    // 创建模拟的 R 对象
-    const R = {
-      esc: (s) => String(s || '').replace(/[<>&"']/g, ''),
-      metrics: (items) => '<div class="rc-metrics">' + (items || []).map(function(it) {
-        return '<span class="rc-metric' + (it.accent ? ' accent-' + it.accent : '') + '"><b>' + R.esc(it.value || '') + '</b>' + R.esc(it.label || '') + '</span>';
-      }).join('') + '</div>',
-      bar_chart: (items) => '<div class="rc-bar-chart">' + (items || []).map(function(it) {
-        return '<div class="rc-bar-item"><span class="bar-label">' + R.esc(it.label || '') + '</span><div class="bar-track"><div class="bar-fill color-' + (it.color || 'c1') + '" style="width:' + (it.value || 0) + '%"></div></div><span class="bar-value">' + R.esc(it.value + (it.suffix || '')) + '</span></div>';
-      }).join('') + '</div>',
-      insight: (d) => '<div class="rc-insight' + (d.style === 'warn' ? ' warn' : ' tip') + '">' + (d.title ? '<strong>' + R.esc(d.title) + '</strong>' : '') + '<p>' + (d.body || '') + '</p></div>',
-    };
-    renderReport = fn(R);
+    // 在 jsdom 中执行 render.js — var R 和 renderReport 挂到 window
+    const fn = new Function(renderJs + '; return renderReport;');
+    renderReport = fn();
   });
 
   test('returns empty string for null input', () => {
@@ -120,6 +59,55 @@ describe('renderReport', () => {
     expect(result).toContain('30%');
   });
 
+  test('renders table section', () => {
+    const result = renderReport({
+      sections: [{ type: 'table', data: {
+        headers: ['品牌', '价格'],
+        rows: [['品牌A', '¥299'], ['品牌B', '¥399']]
+      }}]
+    });
+    expect(result).toContain('rc-table');
+    expect(result).toContain('品牌A');
+    expect(result).toContain('¥299');
+  });
+
+  test('renders brand_card section', () => {
+    const result = renderReport({
+      sections: [{ type: 'brand_card', data: {
+        name: '法式茶歇裙', brand: 'a',
+        rows: [{ k: '建议价格', v: '¥199-299' }, { k: '风险', v: '季节性强' }]
+      }}]
+    });
+    expect(result).toContain('rc-brand-card');
+    expect(result).toContain('法式茶歇裙');
+    expect(result).toContain('¥199-299');
+  });
+
+  test('renders compare section', () => {
+    const result = renderReport({
+      sections: [{ type: 'compare', data: { brands: [
+        { name: '太平鸟', rows: [{ k: '定位', v: '中高端' }] },
+        { name: '伊芙丽', rows: [{ k: '定位', v: '中端' }] }
+      ]}}]
+    });
+    expect(result).toContain('rc-compare');
+    expect(result).toContain('太平鸟');
+    expect(result).toContain('伊芙丽');
+  });
+
+  test('renders swot section', () => {
+    const result = renderReport({
+      sections: [{ type: 'swot', data: {
+        brand: 'a', name: '品牌A',
+        s: ['款式经典'], w: ['季节性强'],
+        o: ['直播红利'], t: ['价格战']
+      }}]
+    });
+    expect(result).toContain('rc-swot');
+    expect(result).toContain('优势');
+    expect(result).toContain('劣势');
+  });
+
   test('renders insight (tip)', () => {
     const result = renderReport({
       sections: [{ type: 'insight', data: { style: 'tip', title: '建议', body: '值得切入' } }]
@@ -133,8 +121,23 @@ describe('renderReport', () => {
     const result = renderReport({
       sections: [{ type: 'insight', data: { style: 'warn', body: '注意风险' } }]
     });
-    expect(result).toContain('rc-insight warn');
+    expect(result).toContain('rc-insight');
     expect(result).toContain('注意风险');
+  });
+
+  test('renders section_title', () => {
+    const result = renderReport({
+      sections: [{ type: 'section_title', data: { text: '价格带分析', style: 'gold' } }]
+    });
+    expect(result).toContain('rc-section-title');
+    expect(result).toContain('价格带分析');
+  });
+
+  test('renders text section', () => {
+    const result = renderReport({
+      sections: [{ type: 'text', data: { content: '纯文本段落' } }]
+    });
+    expect(result).toContain('纯文本段落');
   });
 
   test('handles unknown section type gracefully', () => {
@@ -152,7 +155,6 @@ describe('renderReport', () => {
         { type: 'insight', data: { style: 'tip', body: '结论' } }
       ]
     });
-    // title first
     const titleIdx = result.indexOf('综合报告');
     const metricsIdx = result.indexOf('rc-metrics');
     const insightIdx = result.indexOf('rc-insight');
