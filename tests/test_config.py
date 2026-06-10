@@ -2,7 +2,7 @@
 import os
 import pytest
 
-# 必须在 import config 前覆盖环境变量
+# 必须在 import backend.config as config 前覆盖环境变量
 os.environ["DEEPSEEK_API_KEY"] = "test-key-ds"
 os.environ["LLM_API_KEY"] = ""  # 清空确保回退到 DEEPSEEK_API_KEY
 os.environ["ARK_API_KEY"] = "test-key-ark"
@@ -14,7 +14,7 @@ os.environ["APP_ENV"] = "test"
 import importlib, config
 importlib.reload(config)
 
-from config import (
+from backend.config import (
     DEEPSEEK_API_KEY, ARK_API_KEY, TAVILY_API_KEY, BOCHA_API_KEY,
     APP_ENV, IS_PROD, diagnostics,
     LLM_API_KEY, LLM_MODEL_FLASH, LLM_MODEL_PRO, LLM_MODEL_CHAT,

@@ -4,14 +4,9 @@ ReflectionEngine — 报告质量反思修正
 import json
 import logging
 
-try:
-    from .llm_client import chat, extract_json, MODEL_CHAT
-    from .intent import goal_to_text
-    from .report_pipeline import TARGET_SCORE
-except ImportError:
-    from llm_client import chat, extract_json, MODEL_CHAT
-    from intent import goal_to_text
-    from report_pipeline import TARGET_SCORE
+from .llm_client import chat, extract_json, MODEL_CHAT
+from .intent import goal_to_text
+from .report_pipeline import TARGET_SCORE
 
 logger = logging.getLogger(__name__)
 

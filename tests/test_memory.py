@@ -2,7 +2,7 @@
 import os, json, sys, tempfile, pytest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+# sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 
 class TestKeyFindingsExtraction:
@@ -59,11 +59,11 @@ class TestSlidingWindow:
     """滑动窗口逻辑"""
 
     def test_window_size_constant(self):
-        from memory import MemorySystem
+        from backend.memory import MemorySystem
         assert MemorySystem.SLIDING_WINDOW == 10
 
     def test_compress_threshold(self):
-        from memory import MemorySystem
+        from backend.memory import MemorySystem
         # 超过 SLIDING_WINDOW + 5 才触发压缩
         assert MemorySystem.SLIDING_WINDOW + 5 == 15
 
@@ -73,7 +73,7 @@ class TestInjectableContextFormat:
 
     def test_context_contains_md_headers(self):
         """验证核心注入方法存在且返回字符串"""
-        from memory import MemorySystem
+        from backend.memory import MemorySystem
         ms = MemorySystem()
         # 空 session 应返回空字符串或基本结构
         ctx = ms.get_injectable_context("test_empty_session")

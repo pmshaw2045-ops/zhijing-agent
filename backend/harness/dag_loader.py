@@ -6,10 +6,7 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-try:
-    from ..intent_registry import get_all_dags
-except ImportError:
-    from intent_registry import get_all_dags
+from ..intent_registry import get_all_dags
 
 # 默认 DAG 模板（从 registry 构建，兜底用）
 _DEFAULT_DAGS = get_all_dags()

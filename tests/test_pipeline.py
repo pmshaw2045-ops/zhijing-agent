@@ -3,7 +3,7 @@ import sys, json, pytest, asyncio
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+# # sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 
 @pytest.fixture
@@ -30,9 +30,9 @@ class TestDecomposeFlow:
     @pytest.mark.asyncio
     async def test_llm_decompose_with_params_format(self, mock_chat):
         """LLM输出 params.query 格式 → 标准化后 desc 应正确"""
-        from decompose_engine import DecomposeEngine
-        from harness.dag_loader import DAGLoader
-        import decompose_engine as de_mod
+        from backend.decompose_engine import DecomposeEngine
+        from backend.harness.dag_loader import DAGLoader
+        import backend.decompose_engine as de_mod
 
         mock_chat.set_response("任务规划",
             '{"tasks":[{"id":"1","tool":"bocha_search","params":{"query":"搜索连衣裙趋势"}},'
@@ -52,9 +52,9 @@ class TestDecomposeFlow:
     @pytest.mark.asyncio
     async def test_decompose_fallback_on_invalid_json(self, mock_chat):
         """LLM返回非法JSON → 回退模板"""
-        from decompose_engine import DecomposeEngine
-        from harness.dag_loader import DAGLoader
-        import decompose_engine as de_mod
+        from backend.decompose_engine import DecomposeEngine
+        from backend.harness.dag_loader import DAGLoader
+        import backend.decompose_engine as de_mod
 
         mock_chat.set_response("任务规划", "这不是JSON{broken")
 
@@ -69,9 +69,9 @@ class TestDecomposeFlow:
     @pytest.mark.asyncio
     async def test_decompose_with_description_field(self, mock_chat):
         """LLM输出 description 字段 → 标准化后 desc 应正确"""
-        from decompose_engine import DecomposeEngine
-        from harness.dag_loader import DAGLoader
-        import decompose_engine as de_mod
+        from backend.decompose_engine import DecomposeEngine
+        from backend.harness.dag_loader import DAGLoader
+        import backend.decompose_engine as de_mod
 
         mock_chat.set_response("任务规划",
             '{"tasks":[{"id":"1","tool":"bocha_search","description":"搜索热词"},'
@@ -86,7 +86,7 @@ class TestDecomposeFlow:
     @pytest.mark.asyncio
     async def test_goal_to_text_conversion(self):
         """Goal dict → 自然语言"""
-        from intent import goal_to_text
+        from backend.intent import goal_to_text
 
         result = goal_to_text({"品类": "连衣裙", "风格": "法式", "时间范围": "2026夏季"})
         assert "品类：连衣裙" in result
@@ -99,7 +99,7 @@ class TestPrecheckFlow:
 
     def test_vague_input_blocked(self):
         """模糊输入 → 拦截"""
-        from precheck import PrecheckEngine
+        from backend.precheck import PrecheckEngine
         pe = PrecheckEngine()
         intent = {"intent_type": "单品选品分析", "entities": {"subject": None, "category": None},
                    "goal": {"品类": None}}
@@ -109,7 +109,7 @@ class TestPrecheckFlow:
 
     def test_specific_input_passes(self):
         """具体输入 → 通过"""
-        from precheck import PrecheckEngine
+        from backend.precheck import PrecheckEngine
         pe = PrecheckEngine()
         intent = {"intent_type": "单品选品分析",
                    "entities": {"subject": "连衣裙", "category": "连衣裙"},
@@ -119,7 +119,7 @@ class TestPrecheckFlow:
 
     def test_competitive_requires_brands(self):
         """竞品意图需要品牌"""
-        from precheck import PrecheckEngine
+        from backend.precheck import PrecheckEngine
         pe = PrecheckEngine()
         intent = {"intent_type": "多品牌竞品对标",
                    "entities": {"subject": "连衣裙", "category": "连衣裙"},
@@ -129,7 +129,7 @@ class TestPrecheckFlow:
 
     def test_clarify_message_format(self):
         """澄清消息格式正确"""
-        from precheck import PrecheckEngine
+        from backend.precheck import PrecheckEngine
         pe = PrecheckEngine()
         msg = pe.build_clarify({"gaps": ["请明确品类"], "hints": ["补充平台"]})
         assert "确认以下信息" in msg

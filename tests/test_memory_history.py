@@ -3,16 +3,16 @@ import sys
 import os
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+# # sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 import pytest
-from memory import MemorySystem
+from backend.memory import MemorySystem
 
 
 @pytest.fixture
 def memory(tmp_path):
     """每个测试使用独立的临时目录"""
-    import memory as mem_mod
+    import backend.memory as mem_mod
     # 临时替换 DATA_DIR
     old_dir = mem_mod.DATA_DIR
     mem_mod.DATA_DIR = tmp_path

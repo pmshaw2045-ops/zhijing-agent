@@ -7,16 +7,10 @@ from __future__ import annotations
 import json
 import logging
 
-try:
-    from .llm_client import chat, extract_json, MODEL_PRO
-    from .intent_registry import INTENT_REGISTRY, get_all_names, get_decompose_rule
-    from .intent import goal_to_text
-    from .tools import AVAILABLE_TOOLS
-except ImportError:
-    from llm_client import chat, extract_json, MODEL_PRO
-    from intent_registry import INTENT_REGISTRY, get_all_names, get_decompose_rule
-    from intent import goal_to_text
-    from tools import AVAILABLE_TOOLS
+from .llm_client import chat, extract_json, MODEL_PRO
+from .intent_registry import INTENT_REGISTRY, get_all_names, get_decompose_rule
+from .intent import goal_to_text
+from .tools import AVAILABLE_TOOLS
 
 logger = logging.getLogger(__name__)
 

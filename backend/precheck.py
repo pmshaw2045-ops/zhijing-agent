@@ -5,10 +5,7 @@ PrecheckEngine — 前置校验 + 澄清消息生成
 """
 import logging
 
-try:
-    from .intent_registry import INTENT_REGISTRY
-except ImportError:
-    from intent_registry import INTENT_REGISTRY
+from .intent_registry import INTENT_REGISTRY
 
 logger = logging.getLogger(__name__)
 

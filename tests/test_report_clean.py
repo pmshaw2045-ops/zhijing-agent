@@ -1,7 +1,7 @@
 """测试 report.py — _clean 函数 + ReportBuilder"""
 import json
 import pytest
-from report import _clean
+from backend.report import _clean
 
 
 class TestCleanFunction:

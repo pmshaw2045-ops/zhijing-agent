@@ -3,10 +3,7 @@ ImageOptimizer — LLM 驱动文生图 prompt 优化
 """
 import logging
 
-try:
-    from .llm_client import chat, MODEL_FLASH
-except ImportError:
-    from llm_client import chat, MODEL_FLASH
+from .llm_client import chat, MODEL_FLASH
 
 logger = logging.getLogger(__name__)
 

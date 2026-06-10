@@ -7,14 +7,9 @@ IntentRouter — 意图识别 + 路由
 import json
 import logging
 
-try:
-    from .llm_client import chat, extract_json
-    from .config import MODEL_FLASH
-    from .intent_registry import route_by_name, get_en_to_cn, get_mode_fallback, get_all_names, get_intent_signals
-except ImportError:
-    from llm_client import chat, extract_json
-    from config import MODEL_FLASH
-    from intent_registry import route_by_name, get_en_to_cn, get_mode_fallback, get_all_names, get_intent_signals
+from .llm_client import chat, extract_json
+from .config import MODEL_FLASH
+from .intent_registry import route_by_name, get_en_to_cn, get_mode_fallback, get_all_names, get_intent_signals
 
 logger = logging.getLogger(__name__)
 

@@ -5,13 +5,13 @@ import json
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+# # sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 # 确保测试不依赖真实 .env（覆盖可能干扰的 env vars）
 os.environ["STORE_BACKEND"] = "sqlite"
 
 import pytest
-from store import SQLiteBackend, migrate_json_to_sqlite
+from backend.store import SQLiteBackend, migrate_json_to_sqlite
 
 
 @pytest.fixture

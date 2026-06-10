@@ -8,7 +8,7 @@ from unittest.mock import patch, MagicMock
 sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 import pytest
-from conversation import ConversationManager, Scenario
+from backend.conversation import ConversationManager, Scenario
 
 
 @pytest.fixture
@@ -49,19 +49,19 @@ class TestDetectScenario:
 class TestDetectScenarioLLM:
     def test_llm_fallback_on_long_query_no_keyword(self, mgr):
         """关键词未命中但上轮有上下文 → LLM 兜底"""
-        with patch("conversation.chat_sync", return_value="followup_deepen"):
+        with patch("backend.conversation.chat_sync", return_value="followup_deepen"):
             result = mgr.detect_scenario("那泡泡袖的市场表现如何", last_intent="selection")
             assert result == Scenario.FOLLOWUP_DEEPEN
 
     def test_llm_returns_new_query(self, mgr):
         """LLM 判定为新查询（长查询绕过短查询启发式）"""
-        with patch("conversation.chat_sync", return_value="new_query"):
+        with patch("backend.conversation.chat_sync", return_value="new_query"):
             result = mgr.detect_scenario("帮我分析2026秋季连衣裙的市场趋势和价格带分布情况以及消费者偏好变化", last_intent="selection")
             assert result == Scenario.NEW_QUERY
 
     def test_llm_failure_falls_back(self, mgr):
         """LLM 调用失败 → 返回 NEW_QUERY"""
-        with patch("conversation.chat_sync", side_effect=Exception("API error")):
+        with patch("backend.conversation.chat_sync", side_effect=Exception("API error")):
             result = mgr.detect_scenario("帮我分析2026秋季连衣裙的市场趋势和价格带分布情况以及消费者偏好变化", last_intent="selection")
             assert result == Scenario.NEW_QUERY
 
@@ -114,9 +114,11 @@ class TestExtractEntities:
 
     def test_new_query_no_entities(self, mgr):
         """新查询无匹配 → None"""
-        result = mgr.extract_entities_from_followup("帮我分析2026夏季连衣裙趋势", {})
-        # 应为 None（LLM 兜底可能返回，这里模拟无结果）
-        assert result is None or not any(v for v in result.values() if v)
+        with patch("backend.conversation.chat_sync",
+                   return_value="不是JSON{broken"):
+            result = mgr.extract_entities_from_followup("帮我分析2026夏季连衣裙趋势", {})
+        # LLM 兜底返回无效JSON → None
+        assert result is None
 
     def test_has_entity_changes(self, mgr):
         """has_entity_changes 检测"""

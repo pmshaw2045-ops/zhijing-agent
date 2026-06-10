@@ -14,7 +14,7 @@ import sys, json, pytest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+# # sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 
 # ============ Fixtures ============
@@ -26,7 +26,7 @@ def mock_sync_openai():
     def _make_response(text: str):
         return MagicMock(choices=[MagicMock(message=MagicMock(content=text))])
 
-    import llm_client as llm_mod
+    import backend.llm_client as llm_mod
 
     with patch.object(llm_mod._sync_client.chat.completions, 'create',
                       return_value=_make_response(json.dumps({
@@ -47,7 +47,7 @@ class TestBuildSearchContext:
     """_build_search_context 纯函数测试"""
 
     def test_with_snippets(self):
-        from tools import _build_search_context
+        from backend.tools import _build_search_context
         raw_data = {
             "snippets": ["[标题A](url): 内容A", "[标题B](url): 内容B"],
         }
@@ -56,7 +56,7 @@ class TestBuildSearchContext:
         assert "- [标题B]" in result
 
     def test_with_raw_results(self):
-        from tools import _build_search_context
+        from backend.tools import _build_search_context
         raw_data = {
             "raw_results": [{"content": "结果1内容"}, {"content": "结果2内容"}],
         }
@@ -65,7 +65,7 @@ class TestBuildSearchContext:
         assert "结果2内容" in result
 
     def test_with_summary_only(self):
-        from tools import _build_search_context
+        from backend.tools import _build_search_context
         raw_data = {"summary": "这是一个关于连衣裙的搜索摘要", "results_count": 5}
         result = _build_search_context(raw_data, "连衣裙")
         assert "连衣裙" in result
@@ -73,17 +73,17 @@ class TestBuildSearchContext:
 
     def test_empty_dict_returns_empty(self):
         """{} 是 falsy → 代码走 not raw_data 分支返回 ''"""
-        from tools import _build_search_context
+        from backend.tools import _build_search_context
         result = _build_search_context({}, "茶歇裙")
         assert result == ""
 
     def test_none_raw_data(self):
-        from tools import _build_search_context
+        from backend.tools import _build_search_context
         result = _build_search_context(None, "茶歇裙")
         assert result == ""
 
     def test_invalid_type(self):
-        from tools import _build_search_context
+        from backend.tools import _build_search_context
         result = _build_search_context("not a dict", "茶歇裙")
         assert result == ""
 
@@ -95,7 +95,7 @@ class TestLlmExtract:
     """_llm_extract — mock OpenAI 层"""
 
     def test_successful_extraction(self, mock_sync_openai):
-        from tools import _llm_extract
+        from backend.tools import _llm_extract
         result = _llm_extract("分析: {query}\n数据: {search_text}",
                               {"snippets": ["测试数据"]}, "茶歇裙", "trend_analyze")
         assert result.get("_llm_driven") is True
@@ -103,7 +103,7 @@ class TestLlmExtract:
 
     def test_extraction_with_empty_search_context(self, mock_sync_openai):
         """无搜索结果时，llm_knowledge 作为数据源"""
-        from tools import _llm_extract
+        from backend.tools import _llm_extract
         result = _llm_extract("分析: {query}\n数据: {search_text}",
                               {}, "法式风", "trend_analyze")
         assert result.get("_llm_driven") is True
@@ -111,8 +111,8 @@ class TestLlmExtract:
 
     def test_llm_returns_invalid_json(self):
         """LLM 返回非JSON → 走 fallback 路径"""
-        from tools import _llm_extract
-        import llm_client as llm_mod
+        from backend.tools import _llm_extract
+        import backend.llm_client as llm_mod
 
         with patch.object(llm_mod._sync_client.chat.completions, 'create',
                           return_value=MagicMock(
@@ -125,8 +125,8 @@ class TestLlmExtract:
 
     def test_llm_raises_exception(self):
         """LLM 调用抛异常 → fallback"""
-        from tools import _llm_extract
-        import llm_client as llm_mod
+        from backend.tools import _llm_extract
+        import backend.llm_client as llm_mod
 
         with patch.object(llm_mod._sync_client.chat.completions, 'create',
                           side_effect=Exception("API timeout")):
@@ -137,8 +137,8 @@ class TestLlmExtract:
 
     def test_prompt_format_with_special_chars(self):
         """prompt 含 {} 符号时 format 不应炸 — 但当前代码用 .format() 有潜在风险"""
-        from tools import _llm_extract
-        import llm_client as llm_mod
+        from backend.tools import _llm_extract
+        import backend.llm_client as llm_mod
 
         with patch.object(llm_mod._sync_client.chat.completions, 'create',
                           return_value=MagicMock(
@@ -159,8 +159,8 @@ class TestScoreCandidates:
 
     def test_empty_candidates_no_llm(self):
         """空候选 → 快速路径，不调用 LLM"""
-        from tools import _score_candidates
-        import llm_client as llm_mod
+        from backend.tools import _score_candidates
+        import backend.llm_client as llm_mod
         original_sync = llm_mod._sync_client.chat.completions.create
 
         result = _score_candidates({"candidates": [], "criteria": []})
@@ -171,8 +171,8 @@ class TestScoreCandidates:
 
     def test_string_candidates(self):
         """candidates 是字符串 → 包装为列表"""
-        import llm_client as llm_mod
-        from tools import _score_candidates
+        import backend.llm_client as llm_mod
+        from backend.tools import _score_candidates
 
         with patch.object(llm_mod._sync_client.chat.completions, 'create',
                           return_value=MagicMock(
@@ -184,8 +184,8 @@ class TestScoreCandidates:
 
     def test_default_criteria_when_empty(self):
         """空 criteria → 使用默认评分维度"""
-        import llm_client as llm_mod
-        from tools import _score_candidates
+        import backend.llm_client as llm_mod
+        from backend.tools import _score_candidates
 
         with patch.object(llm_mod._sync_client.chat.completions, 'create') as mock_create:
             mock_create.return_value = MagicMock(
@@ -207,37 +207,37 @@ class TestExecuteToolSync:
     """execute_tool_sync 路由分发"""
 
     def test_route_report_generate(self):
-        from tools import execute_tool_sync
+        from backend.tools import execute_tool_sync
         result = execute_tool_sync("report_generate", {})
         assert result.get("status") == "delegated_to_llm"
 
     def test_route_unknown_tool(self):
-        from tools import execute_tool_sync
+        from backend.tools import execute_tool_sync
         result = execute_tool_sync("nonexistent_tool", {})
         assert "error" in result
         assert "Unknown" in result["error"]
 
     def test_route_trend_analyze(self, mock_sync_openai):
-        from tools import execute_tool_sync
+        from backend.tools import execute_tool_sync
         result = execute_tool_sync("trend_analyze", {"query": "茶歇裙", "raw_data": {"snippets": ["数据"]}})
         assert result.get("tool") == "trend_analyze"
         assert result.get("_llm_driven") is True
 
     def test_route_price_analyze(self, mock_sync_openai):
-        from tools import execute_tool_sync
+        from backend.tools import execute_tool_sync
         result = execute_tool_sync("price_analyze", {"query": "连衣裙", "raw_data": {"snippets": ["价格数据"]}})
         assert result.get("tool") == "price_analyze"
         assert result.get("_llm_driven") is True
 
     def test_route_competitive_analyze(self, mock_sync_openai):
-        from tools import execute_tool_sync
+        from backend.tools import execute_tool_sync
         result = execute_tool_sync("competitive_analyze", {"query": "品牌A vs 品牌B", "raw_data": {"snippets": ["竞品数据"]}})
         assert result.get("tool") == "competitive_analyze"
         assert result.get("_llm_driven") is True
 
     def test_route_scoring_no_candidates(self):
         """空候选 → 路由到 _score_candidates 的快速路径"""
-        from tools import execute_tool_sync
+        from backend.tools import execute_tool_sync
         result = execute_tool_sync("scoring_engine", {"candidates": [], "criteria": []})
         assert result.get("tool") == "scoring_engine"
         assert result.get("scored") == 0
@@ -250,14 +250,14 @@ class TestAvailableTools:
     """AVAILABLE_TOOLS 列表完整性"""
 
     def test_all_tools_have_required_fields(self):
-        from tools import AVAILABLE_TOOLS
+        from backend.tools import AVAILABLE_TOOLS
         for t in AVAILABLE_TOOLS:
             assert "name" in t, f"Tool missing 'name': {t}"
             assert "description" in t, f"Tool {t['name']} missing 'description'"
             assert "parameters" in t, f"Tool {t['name']} missing 'parameters'"
 
     def test_tool_list_contains_expected_tools(self):
-        from tools import AVAILABLE_TOOLS
+        from backend.tools import AVAILABLE_TOOLS
         names = [t["name"] for t in AVAILABLE_TOOLS]
         expected = ["web_search", "bocha_search", "trend_analyze", "price_analyze",
                      "competitive_analyze", "scoring_engine", "report_generate", "image_generate"]
@@ -265,6 +265,6 @@ class TestAvailableTools:
             assert name in names, f"Missing tool: {name}"
 
     def test_tool_names_no_duplicates(self):
-        from tools import AVAILABLE_TOOLS
+        from backend.tools import AVAILABLE_TOOLS
         names = [t["name"] for t in AVAILABLE_TOOLS]
         assert len(names) == len(set(names)), "Duplicate tool names found"

@@ -7,7 +7,7 @@ import asyncio
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+# sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 os.environ.setdefault("DEEPSEEK_API_KEY", "test-key")
 
 import pytest
@@ -42,7 +42,7 @@ async def _noop_sleep(_s):
 
 class TestIsRetryable:
     def _import(self):
-        from llm_client import _is_retryable
+        from backend.llm_client import _is_retryable
         return _is_retryable
 
     def test_retryable_openai_types(self):
@@ -77,7 +77,7 @@ class TestIsRetryable:
 
 class TestRetryAsync:
     def _import(self):
-        from llm_client import _retry_async
+        from backend.llm_client import _retry_async
         return _retry_async
 
     @pytest.mark.asyncio
@@ -97,7 +97,7 @@ class TestRetryAsync:
             if calls[0] < 3:
                 raise httpx.ConnectError("fail")
             return "recovered"
-        with patch("llm_client.asyncio.sleep", _noop_sleep):
+        with patch("backend.llm_client.asyncio.sleep", _noop_sleep):
             result = await _retry_async(flaky, "test-model")
         assert result == "recovered"
         assert calls[0] == 3
@@ -109,7 +109,7 @@ class TestRetryAsync:
         async def bad():
             calls[0] += 1
             raise ValueError("bad")
-        with patch("llm_client.asyncio.sleep", _noop_sleep):
+        with patch("backend.llm_client.asyncio.sleep", _noop_sleep):
             with pytest.raises(ValueError):
                 await _retry_async(bad, "test-model")
         assert calls[0] == 1
@@ -121,7 +121,7 @@ class TestRetryAsync:
         async def always_timeout():
             calls[0] += 1
             raise asyncio.TimeoutError()
-        with patch("llm_client.asyncio.sleep", _noop_sleep):
+        with patch("backend.llm_client.asyncio.sleep", _noop_sleep):
             with pytest.raises(asyncio.TimeoutError):
                 await _retry_async(always_timeout, "test-model")
         assert calls[0] == 3
@@ -136,14 +136,14 @@ class TestRetryAsync:
             return "ok"
         async def capture(s):
             delays.append(s)
-        with patch("llm_client.asyncio.sleep", capture):
+        with patch("backend.llm_client.asyncio.sleep", capture):
             await _retry_async(fail_twice, "test-model")
         assert delays == [1.0, 2.0]
 
 
 class TestRetrySync:
     def _import(self):
-        from llm_client import _retry_sync
+        from backend.llm_client import _retry_sync
         return _retry_sync
 
     def test_succeeds_first_attempt(self):
@@ -158,7 +158,7 @@ class TestRetrySync:
             if calls[0] < 2:
                 raise httpx.ConnectError("fail")
             return "recovered"
-        with patch("llm_client.time.sleep", return_value=None):
+        with patch("backend.llm_client.time.sleep", return_value=None):
             result = _retry_sync(flaky, "test-model")
         assert result == "recovered"
         assert calls[0] == 2
@@ -179,7 +179,7 @@ class TestRetrySync:
         def always_timeout():
             calls[0] += 1
             raise httpx.TimeoutException("timeout")
-        with patch("llm_client.time.sleep", return_value=None):
+        with patch("backend.llm_client.time.sleep", return_value=None):
             with pytest.raises(httpx.TimeoutException):
                 _retry_sync(always_timeout, "test-model")
         assert calls[0] == 3

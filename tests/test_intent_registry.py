@@ -1,6 +1,6 @@
 """测试 intent_registry.py — 意图注册表完整性"""
 import pytest
-from intent_registry import (
+from backend.intent_registry import (
     INTENT_REGISTRY, Complexity,
     route_by_name, get_en_to_cn, get_mode_fallback,
     get_all_names, get_complexity, get_intent_signals,

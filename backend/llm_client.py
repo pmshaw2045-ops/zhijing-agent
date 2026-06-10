@@ -13,20 +13,12 @@ import logging
 import httpx
 from openai import AsyncOpenAI, OpenAI, APIStatusError, APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
 
-try:
-    from .config import (
-        LLM_API_KEY, LLM_BASE_URL,
-        ARK_API_KEY, ARK_BASE_URL, ARK_MODEL,
-        MODEL_FLASH, MODEL_PRO, MODEL_CHAT,
-    )
-    from .observability import record_tokens
-except ImportError:
-    from config import (
-        LLM_API_KEY, LLM_BASE_URL,
-        ARK_API_KEY, ARK_BASE_URL, ARK_MODEL,
-        MODEL_FLASH, MODEL_PRO, MODEL_CHAT,
-    )
-    from observability import record_tokens
+from .config import (
+    LLM_API_KEY, LLM_BASE_URL,
+    ARK_API_KEY, ARK_BASE_URL, ARK_MODEL,
+    MODEL_FLASH, MODEL_PRO, MODEL_CHAT,
+)
+from .observability import record_tokens
 
 logger = logging.getLogger(__name__)
 

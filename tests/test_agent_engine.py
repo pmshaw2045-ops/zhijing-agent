@@ -9,7 +9,7 @@ import sys, json, pytest, asyncio, os, time
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+# # sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 
 # ============ 测试数据 ============
@@ -90,7 +90,7 @@ def mock_openai():
     mock_openai_inst = MagicMock()
     mock_openai_inst.set_response = set_response
 
-    import llm_client as llm_mod
+    import backend.llm_client as llm_mod
 
     with patch.object(llm_mod._async_client.chat.completions, 'create', side_effect=async_create), \
          patch.object(llm_mod._sync_client.chat.completions, 'create', side_effect=sync_create):
@@ -104,7 +104,7 @@ class TestAgentEngineInit:
     """AgentEngine 初始化 — 所有组件应正确创建"""
 
     def test_all_components_created(self):
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
         eng = AgentEngine()
         assert hasattr(eng, 'memory'), "MemorySystem missing"
         assert hasattr(eng, 'registry'), "ToolRegistry missing"
@@ -122,7 +122,7 @@ class TestAgentEngineInit:
 
     def test_init_no_crash(self):
         """初始化不应抛出异常"""
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
         eng = AgentEngine()
         assert eng._pending_clarify is None
         assert isinstance(eng._report_cache, dict)
@@ -136,14 +136,14 @@ class TestCache:
 
     def test_load_cache_non_existent(self):
         """缓存文件不存在 → 返回空 dict"""
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
         eng = AgentEngine()
         cache = eng._load_cache()
         assert isinstance(cache, dict)
 
     def test_cache_key_miss_then_hit(self):
         """同 query+mode 24h 内应命中"""
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
         eng = AgentEngine()
         key = "test_cache|selection"
         report = '{"title":"test"}'
@@ -158,7 +158,7 @@ class TestMapTools:
     """_map_tools — DAG → 工具映射"""
 
     def test_normal_mapping(self):
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
         eng = AgentEngine()
         dag = {"tasks": [
             {"id": "T1", "tool": "bocha_search", "deps": [], "parallel_group": 0, "desc": "搜索数据"},
@@ -171,7 +171,7 @@ class TestMapTools:
 
     def test_desc_fallback_unknown_tool(self):
         """工具名不识别 → 兜底 web_search"""
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
         eng = AgentEngine()
         dag = {"tasks": [
             {"id": "T1", "tool": "nonexistent_tool", "deps": [], "parallel_group": 0, "desc": "查数据"},
@@ -181,7 +181,7 @@ class TestMapTools:
 
     def test_desc_empty_uses_label_fallback(self):
         """desc 为空 → 从 tool+id 生成标签"""
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
         eng = AgentEngine()
         dag = {"tasks": [
             {"id": "T1", "tool": "bocha_search", "deps": [], "parallel_group": 0, "desc": ""},
@@ -192,7 +192,7 @@ class TestMapTools:
 
     def test_empty_tasks_list(self):
         """空任务列表 → total=0"""
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
         eng = AgentEngine()
         result = eng._map_tools({"tasks": []})
         assert result["total"] == 0
@@ -212,7 +212,7 @@ class TestPipelineFlows:
         mock_openai.set_response("资深分析师", SAMPLE_REPORT)
         mock_openai.set_response("质检专家", json.dumps(SAMPLE_REFLECTION, ensure_ascii=False))
 
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
 
         eng = AgentEngine()
         # 让 precheck 通过（不依赖 LLM）
@@ -235,7 +235,7 @@ class TestPipelineFlows:
         """信息不足时 → 发出 clarify 事件并提前结束"""
         mock_openai.set_response("识别专家", json.dumps(SAMPLE_INTENT, ensure_ascii=False))
 
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
 
         eng = AgentEngine()
         eng.precheck.check = MagicMock(return_value=FAILED_PRECHECK)
@@ -258,8 +258,8 @@ class TestPipelineFlows:
             "missing_info": [],
         }, ensure_ascii=False))
 
-        from agent_engine import AgentEngine
-        import agent_engine as ae_mod
+        from backend.agent_engine import AgentEngine
+        import backend.agent_engine as ae_mod
 
         with patch.object(ae_mod, 'execute_tool_sync',
                           lambda *a, **kw: {"url": "http://example.com/img.png", "prompt": "test"}):
@@ -279,7 +279,7 @@ class TestPipelineFlows:
     @pytest.mark.asyncio
     async def test_cache_hit_returns_early(self, mock_openai):
         """缓存命中（24h 内同 query+mode）→ 直接返回缓存"""
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
 
         # 用 UUID 避免跨测试记忆污染（MemorySystem 持久化到磁盘）
         import uuid
@@ -300,7 +300,7 @@ class TestPipelineFlows:
     @pytest.mark.asyncio
     async def test_cache_stale_removed(self, mock_openai):
         """缓存超过 24h → 移除"""
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
 
         eng = AgentEngine()
         cache_key = "stale_query|auto"
@@ -316,10 +316,10 @@ class TestPipelineFlows:
         mock_openai.set_response("识别专家", json.dumps(SAMPLE_INTENT, ensure_ascii=False))
         mock_openai.set_response("任务规划", json.dumps(SAMPLE_DAG, ensure_ascii=False))
 
-        from agent_engine import AgentEngine
-        import agent_engine as ae_mod
+        from backend.agent_engine import AgentEngine
+        import backend.agent_engine as ae_mod
         from unittest.mock import AsyncMock
-        import llm_client as llm_mod
+        import backend.llm_client as llm_mod
 
         with patch.object(ae_mod, 'execute_tool_sync',
                           lambda *a, **kw: {"summary": "mock", "_llm_driven": False}):
@@ -367,8 +367,8 @@ class TestPipelineFlows:
         mock_openai.set_response("资深分析师", SAMPLE_REPORT)
         mock_openai.set_response("质检专家", json.dumps(SAMPLE_REFLECTION, ensure_ascii=False))
 
-        from agent_engine import AgentEngine
-        import agent_engine as ae_mod
+        from backend.agent_engine import AgentEngine
+        import backend.agent_engine as ae_mod
 
         with patch.object(ae_mod, 'execute_tool_sync',
                           lambda *a, **kw: {"summary": "mock", "_llm_driven": False}):
@@ -390,7 +390,7 @@ class TestMemoryUpdate:
     """_update_memory — Pipeline 完成后的记忆更新"""
 
     def test_update_memory_appends_conversation(self):
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
         eng = AgentEngine()
 
         eng._update_memory("test_sid", "用户提问",
@@ -403,7 +403,7 @@ class TestMemoryUpdate:
         assert "assistant" in roles
 
     def test_update_memory_stores_last_intent(self):
-        from agent_engine import AgentEngine
+        from backend.agent_engine import AgentEngine
         eng = AgentEngine()
 
         eng._update_memory("test_sid2", "用户提问",
@@ -423,8 +423,8 @@ class TestErrorHandling:
     async def test_pipeline_recovers_from_llm_error(self, mock_openai):
         """意图识别 LLM 返回空 → fallback 不应崩溃"""
         # 不给任何 set_response → 所有 LLM 返回 "{}"
-        from agent_engine import AgentEngine
-        import agent_engine as ae_mod
+        from backend.agent_engine import AgentEngine
+        import backend.agent_engine as ae_mod
 
         with patch.object(ae_mod, 'execute_tool_sync',
                           lambda *a, **kw: {"summary": "mock"}):
@@ -443,8 +443,8 @@ class TestErrorHandling:
     async def test_precheck_no_crash_on_empty_intent(self, mock_openai):
         """空 intent 传给 precheck 不应崩溃"""
         # 不设响应，全返回 "{}" — intent fallback 应兜底
-        from agent_engine import AgentEngine
-        import agent_engine as ae_mod
+        from backend.agent_engine import AgentEngine
+        import backend.agent_engine as ae_mod
 
         with patch.object(ae_mod, 'execute_tool_sync',
                           lambda *a, **kw: {"summary": "mock"}):

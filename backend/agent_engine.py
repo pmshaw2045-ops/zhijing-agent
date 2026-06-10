@@ -25,42 +25,24 @@ from typing import AsyncGenerator
 from pathlib import Path
 
 # Harness层
-try:
-    from .harness.registry import get_registry
-    from .harness.dag_loader import get_dag_loader
-    from .harness.router import get_router, Complexity
-    from .harness.tracer import get_tracer
-    from .harness.executor import ParallelExecutor
-    from .conversation import get_conversation_manager, Scenario
-    from .llm_client import chat, extract_json, MODEL_FLASH, MODEL_PRO, MODEL_CHAT
-    from .memory import MemorySystem
-    from .tools import execute_tool_sync, AVAILABLE_TOOLS
-    from .intent import IntentRouter
-    from .report import ReportBuilder
-    from .reflect import ReflectionEngine
-    from .image_optimizer import ImageOptimizer
-    from .precheck import PrecheckEngine
-    from .observability import get_metrics
-    from .intent_registry import get_decompose_rule, get_all_names
-    from .decompose_engine import DecomposeEngine
-except ImportError:
-    from harness.registry import get_registry
-    from harness.dag_loader import get_dag_loader
-    from harness.router import get_router, Complexity
-    from harness.tracer import get_tracer
-    from harness.executor import ParallelExecutor
-    from conversation import get_conversation_manager, Scenario
-    from llm_client import chat, extract_json, MODEL_FLASH, MODEL_PRO, MODEL_CHAT
-    from memory import MemorySystem
-    from tools import execute_tool_sync, AVAILABLE_TOOLS
-    from intent import IntentRouter
-    from report import ReportBuilder
-    from reflect import ReflectionEngine
-    from image_optimizer import ImageOptimizer
-    from precheck import PrecheckEngine
-    from observability import get_metrics
-    from intent_registry import get_decompose_rule, get_all_names
-    from decompose_engine import DecomposeEngine
+from .harness.registry import get_registry
+from .harness.dag_loader import get_dag_loader
+from .harness.router import get_router, Complexity
+from .harness.tracer import get_tracer
+from .harness.executor import ParallelExecutor
+from .conversation import get_conversation_manager, Scenario
+from .llm_client import chat, extract_json, MODEL_FLASH, MODEL_PRO, MODEL_CHAT
+from .memory import MemorySystem
+from .tools import execute_tool_sync, AVAILABLE_TOOLS
+from .intent import IntentRouter
+from .report import ReportBuilder
+from .reflect import ReflectionEngine
+from .image_optimizer import ImageOptimizer
+from .precheck import PrecheckEngine
+from .observability import get_metrics
+from .intent_registry import get_decompose_rule, get_all_names
+from .decompose_engine import DecomposeEngine
+from .report_pipeline import TARGET_SCORE, build_improvement_instructions, build_improvement_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -279,7 +261,6 @@ class AgentEngine:
 
         # ====== Phase 7: 反思修正 (CostRouter控制) ======
         if self.router.should_include_reflection(complexity):
-            TARGET_SCORE = 7
             MAX_RETRIES = self.router.get_max_retries(complexity)
 
             yield {"type": "phase", "phase": "reflect", "status": "running", "model": MODEL_PRO}
@@ -298,22 +279,14 @@ class AgentEngine:
                     break
 
                 scores = last_reflection.get("scores", {})
-                dc, ga, ac = scores.get("data_consistency", 5), scores.get("goal_alignment", 5), scores.get("actionability", 5)
-
-                fixes = []
-                if dc < TARGET_SCORE:
-                    fixes.append(f"【数据一致性 {dc}/10→目标≥{TARGET_SCORE}】每个结论必须引用搜索数据原文片段作为证据。标注每条数据的来源(博查/Tavily)。统计数据用具体数字而非模糊描述。不确定的数据标注置信度(高/中/低)。")
-                if ga < TARGET_SCORE:
-                    fixes.append(f"【目标对齐 {ga}/10→目标≥{TARGET_SCORE}】逐条检查用户需求的每个要点是否被完整回答。遗漏的需求点必须补充。偏离主题的内容删除。")
-                if ac < TARGET_SCORE:
-                    fixes.append(f"【可落地性 {ac}/10→目标≥{TARGET_SCORE}】每个建议必须包含：具体¥价格/时间窗口/执行步骤/预期效果。'建议优化定价'不合格，'引流款定¥199、利润款定¥359、6月1日前上架'合格。")
+                fixes = build_improvement_instructions(last_reflection, target=TARGET_SCORE)
 
                 label = f"第{attempt}次重试"
                 yield {"type": "phase", "phase": "reflect_retry", "status": "running",
                        "model": MODEL_PRO, "data": {"attempt": attempt, "label": label,
                        "score_before": overall, "target": TARGET_SCORE, "fixes": fixes}}
 
-                instructions = f"⚠️ 质量不达标(当前{overall}/10，目标≥{TARGET_SCORE}/10)。必须逐条修复：\n" + "\n".join(fixes)
+                instructions = build_improvement_prompt(scores, fixes, target=TARGET_SCORE)
                 instructions += f"\n\n这是第{attempt}次修正。如果仍然不达标将再次重试。请认真对待每一条修复指令。"
 
                 p_retry_rpt = self.report_builder.build_prompt(intent, detected_mode, exec_results, session_id, instructions)

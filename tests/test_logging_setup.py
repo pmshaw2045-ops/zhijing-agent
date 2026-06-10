@@ -8,10 +8,10 @@ import logging
 from io import StringIO
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
+# # sys.path.insert(0, str(Path(__file__).parent.parent / "backend"))
 
 import pytest
-from logging_setup import (
+from backend.logging_setup import (
     set_request_context,
     get_trace_id,
     get_session_id,

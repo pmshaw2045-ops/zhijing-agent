@@ -16,20 +16,12 @@ from fastapi.responses import HTMLResponse, Response, JSONResponse, StreamingRes
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
-try:
-    from .agent_engine import AgentEngine
-    from .memory import MemorySystem
-    from .auth import AuthMiddleware, get_auth_status
-    from .observability import start_request, finish_request, get_metrics
-    from .logging_setup import setup_logging, set_request_context, get_trace_id
-    from .config import MODEL_FLASH, MODEL_PRO
-except ImportError:
-    from agent_engine import AgentEngine
-    from memory import MemorySystem
-    from auth import AuthMiddleware, get_auth_status
-    from observability import start_request, finish_request, get_metrics
-    from logging_setup import setup_logging, set_request_context, get_trace_id
-    from config import MODEL_FLASH, MODEL_PRO
+from .agent_engine import AgentEngine
+from .memory import MemorySystem
+from .auth import AuthMiddleware, get_auth_status
+from .observability import start_request, finish_request, get_metrics
+from .logging_setup import setup_logging, set_request_context, get_trace_id
+from .config import MODEL_FLASH, MODEL_PRO
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(levelname)s: %(message)s')
 logger = logging.getLogger("server")

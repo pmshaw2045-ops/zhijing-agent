@@ -10,10 +10,7 @@ import logging
 import re
 from enum import Enum, auto
 
-try:
-    from .llm_client import chat_sync, MODEL_FLASH
-except ImportError:
-    from llm_client import chat_sync, MODEL_FLASH
+from .llm_client import chat_sync, MODEL_FLASH
 
 logger = logging.getLogger(__name__)
 

@@ -29,10 +29,7 @@ class MemorySystem:
         # 存储后端：STORE_BACKEND=sqlite 时使用 SQLite，否则使用 JSON
         self._backend = None
         if os.environ.get("STORE_BACKEND", "").lower() == "sqlite":
-            try:
-                from .store import SQLiteBackend
-            except ImportError:
-                from store import SQLiteBackend
+            from .store import SQLiteBackend
             self._backend = SQLiteBackend()
 
         self._store = self._load()

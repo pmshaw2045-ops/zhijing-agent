@@ -11,12 +11,8 @@ import json
 import logging
 import httpx
 
-try:
-    from .llm_client import chat_sync, extract_json, MODEL_FLASH, generate_image
-    from .config import TAVILY_API_KEY, TAVILY_URL, BOCHA_API_KEY, BOCHA_URL, SEARCH_PROVIDER
-except ImportError:
-    from llm_client import chat_sync, extract_json, MODEL_FLASH, generate_image
-    from config import TAVILY_API_KEY, TAVILY_URL, BOCHA_API_KEY, BOCHA_URL, SEARCH_PROVIDER
+from .llm_client import chat_sync, extract_json, MODEL_FLASH, generate_image
+from .config import TAVILY_API_KEY, TAVILY_URL, BOCHA_API_KEY, BOCHA_URL, SEARCH_PROVIDER
 
 logger = logging.getLogger(__name__)
 

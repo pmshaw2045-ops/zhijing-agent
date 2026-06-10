@@ -4,10 +4,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Complexity 从 intent_registry 导入（避免循环依赖）
-try:
-    from ..intent_registry import Complexity, INTENT_REGISTRY
-except ImportError:
-    from intent_registry import Complexity, INTENT_REGISTRY
+from ..intent_registry import Complexity, INTENT_REGISTRY
 
 # 意图基础复杂度映射（从 registry 构建：中文名→复杂度）
 _INTENT_COMPLEXITY = {info["name"]: info["complexity"] for info in INTENT_REGISTRY.values()}
