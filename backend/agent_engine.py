@@ -37,7 +37,6 @@ from .tools import execute_tool_sync, AVAILABLE_TOOLS
 from .intent import IntentRouter
 from .report import ReportBuilder
 from .reflect import ReflectionEngine
-from .image_optimizer import ImageOptimizer
 from .precheck import PrecheckEngine
 from .observability import get_metrics
 from .intent_registry import get_decompose_rule, get_all_names
@@ -49,9 +48,50 @@ logger = logging.getLogger(__name__)
 # 数据目录
 DATA_DIR = Path(__file__).parent.parent / "data"
 
-# 工具注册中心（从tools.py同步）
+# ============ 文生图 Prompt 优化 ============
 
 
+def _build_img_prompt(user_prompt: str) -> str:
+    """构建文生图 prompt 优化器的 LLM prompt"""
+    is_design = any(kw in user_prompt for kw in
+                    ["设计图", "设计稿", "线稿", "效果图", "款式图", "版型图", "草图", "手绘"])
+    wants_model = any(kw in user_prompt for kw in
+                      ["模特", "上身", "穿着", "真人", "试穿", "走秀"])
+
+    if is_design:
+        style_guide = "这是一张服装设计师专业线稿/效果图，手绘风格或电脑绘图，展示服装的正面和背面版型，标注面料和设计细节"
+    elif wants_model:
+        style_guide = "这是一张真实时尚摄影照片，真人模特穿着展示，专业影棚灯光，高清商业摄影质感"
+    else:
+        style_guide = "这是一张真实服装产品摄影图，衣服挂在衣架上或平铺展示，纯色干净背景，高清商业摄影质感，电商白底图风格，展示服装全貌"
+
+    return f"""你是服装摄影/设计prompt优化专家。将用户的描述改写为适合AI生图的prompt。
+
+风格要求: {style_guide}
+
+规则:
+1. 开头必须明确这是一张什么类型的图片（真实摄影/设计稿/平铺图）
+2. 如果是真实摄影，强调「高清摄影」「商业摄影」「真实质感」「写实」，避免插画/卡通/3D渲染等词汇
+3. 面料质感作为辅助描述，不要变成面料特写
+4. 描述整件衣服的全貌，展示服装整体廓形
+5. 保留用户指定的风格、色彩、光影要求
+6. 豆包Seedream偏好：主体明确、光影真实、质感细腻
+
+用户描述: {user_prompt}
+
+只输出优化后的prompt文本，不要加任何解释。"""
+
+
+async def _optimize_img_prompt(user_prompt: str, prompt: str = None) -> str:
+    """LLM 优化文生图 prompt，失败时返回原描述"""
+    if prompt is None:
+        prompt = _build_img_prompt(user_prompt)
+    try:
+        raw = await chat(prompt, model=MODEL_FLASH, max_tokens=400)
+        return raw.strip() or user_prompt
+    except Exception as e:
+        logger.warning(f"Image optimize failed: {e}")
+        return user_prompt
 
 
 class AgentEngine:
@@ -66,7 +106,6 @@ class AgentEngine:
         self.intent_router = IntentRouter(self.memory)
         self.report_builder = ReportBuilder(self.memory)
         self.reflection_engine = ReflectionEngine()
-        self.image_optimizer = ImageOptimizer()
         self.precheck = PrecheckEngine()
         self._pending_clarify = None
         self._report_cache = self._load_cache()
@@ -185,9 +224,9 @@ class AgentEngine:
             if detected_mode == "image":
                 # 文生图：用LLM优化prompt注入到任务
                 img_prompt = user_input or intent.get("goal", {}).get("核心关注点", "")
-                p_img_opt = self.image_optimizer.build_prompt(img_prompt)
+                p_img_opt = _build_img_prompt(img_prompt)
                 yield {"type": "prompt", "phase": "image_optimize", "model": MODEL_FLASH, "prompt": p_img_opt, "label": "文生图 Prompt 优化"}
-                optimized = await self.image_optimizer.optimize(img_prompt, prompt=p_img_opt)
+                optimized = await _optimize_img_prompt(img_prompt, prompt=p_img_opt)
                 for t in tasks:
                     if t["tool"] == "image_generate":
                         t["desc"] = optimized
@@ -413,19 +452,34 @@ class AgentEngine:
         self.memory.append_session_chain(session_id, user_input, summary)
 
     def _load_cache(self) -> dict:
-        """从文件加载报告缓存"""
+        """从文件加载报告缓存，只保留 24h 内有效条目"""
         try:
             cf = DATA_DIR / "report_cache.json"
             if cf.exists():
-                return json.loads(cf.read_text(encoding="utf-8"))
+                data = json.loads(cf.read_text(encoding="utf-8"))
+                now = time.time()
+                fresh = {k: v for k, v in data.items() if now - v[0] < 86400}
+                stale_count = len(data) - len(fresh)
+                if stale_count > 0:
+                    logger.info(f"缓存加载: 移除 {stale_count} 条过期条目")
+                return fresh
         except Exception:
             pass
         return {}
 
     def _save_cache(self):
-        """持久化报告缓存到文件"""
+        """持久化报告缓存到文件（写入前清理过期条目）"""
         try:
             import json
+            now = time.time()
+            before = len(self._report_cache)
+            self._report_cache = {
+                k: v for k, v in self._report_cache.items()
+                if now - v[0] < 86400
+            }
+            after = len(self._report_cache)
+            if before != after:
+                logger.info(f"缓存保存: 清理 {before - after} 条过期条目")
             cf = DATA_DIR / "report_cache.json"
             cf.write_text(json.dumps(self._report_cache, ensure_ascii=False), encoding="utf-8")
         except Exception:

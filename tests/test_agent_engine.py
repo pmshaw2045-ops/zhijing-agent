@@ -116,7 +116,6 @@ class TestAgentEngineInit:
         assert hasattr(eng, 'intent_router'), "IntentRouter missing"
         assert hasattr(eng, 'report_builder'), "ReportBuilder missing"
         assert hasattr(eng, 'reflection_engine'), "ReflectionEngine missing"
-        assert hasattr(eng, 'image_optimizer'), "ImageOptimizer missing"
         assert hasattr(eng, 'precheck'), "PrecheckEngine missing"
         assert hasattr(eng, 'decompose_engine'), "DecomposeEngine missing"
 
@@ -265,8 +264,9 @@ class TestPipelineFlows:
                           lambda *a, **kw: {"url": "http://example.com/img.png", "prompt": "test"}):
             eng = AgentEngine()
             eng.precheck.check = MagicMock(return_value=PASSED_PRECHECK)
-            eng.image_optimizer.optimize = AsyncMock(return_value="优化后的prompt")
-            eng.image_optimizer.build_prompt = MagicMock(return_value="")
+            # 文生图用模块级函数替代（ae_mod 在 for 循环外已 import）
+            patch.object(ae_mod, '_optimize_img_prompt', return_value='优化后的prompt').start(),
+            patch.object(ae_mod, '_build_img_prompt', return_value='').start(),
 
             events = []
             async for event in eng.run_pipeline("夏季法式茶歇裙摄影图", "test_image", mode="selection"):
