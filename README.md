@@ -6,8 +6,9 @@
 <p align="center">
   <a href="https://github.com/pmshaw2045-ops/zhijing-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python">
-  <img src="https://img.shields.io/badge/tests-134%20passed-brightgreen.svg" alt="Tests">
-  <img src="https://img.shields.io/badge/coverage-76%25-yellow.svg" alt="Coverage">
+  <img src="https://img.shields.io/badge/tests-227%20passed-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/coverage-79%25-yellow.svg" alt="Coverage">
+  <img src="https://img.shields.io/badge/frontend-57%20tests-blue.svg" alt="Frontend Tests">
 </p>
 
 ***
@@ -94,13 +95,14 @@ zhijing-agent/
 │   ├── harness/           管道基础设施
 │   └── ...
 ├── frontend/
-│   ├── index.html         100 行 HTML 骨架
+│   ├── index.html         109 行 HTML 骨架
 │   ├── style.css          CSS 设计系统
 │   ├── render.js          报告渲染引擎 (9 种组件)
 │   ├── sse.js             SSE 流式 + 重试
 │   ├── handler.js         SSE 事件处理 + layout
-│   └── console.js         Console 日志
-├── tests/                 13 文件 / 134 项测试
+│   ├── console.js         Console 日志
+│   └── tests/             5 文件 / 57 项测试
+├── tests/                 12 文件 / 170 项测试
 ├── docs/                  13 文档
 │   ├── product_summary.md    产品与技术总结
 │   ├── production_readiness.md  生产就绪度评估
