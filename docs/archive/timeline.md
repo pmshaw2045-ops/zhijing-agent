@@ -72,4 +72,26 @@ timeline
         : sse.js 消息气泡∤SSE流解析 → 8测试
         : console.js 全函数覆盖 → 10测试
         : 前端合计 57测试, CI pytest+npm 双线并行
+    section Phase 6 RAG语义记忆
+        SQLite 成为默认存储
+        : get_long_term 修复( list→dict key bug )
+        : memory_vectors 表 zero依赖向量存储
+        : mark_dirty∤flush 统一批量写入
+        LLM embedding 引擎
+        : 16维浮点向量 ∤ asyncio.to_thread 非阻塞
+        : 余弦相似度纯Python实现
+        : 5秒超时∤失败降级 ∤ 空库跳过
+        检索管道
+        : 语义检索 → 同义词映射 → 关键词三阶兜底
+        : CATEGORY_SYNONYMS 8类目体系
+        : find_related_analyses 返回(tuple+search_info)
+        : record_analysis 异步embedding∤索引
+        Console 透明化
+        : memory_search SSE事件
+        : handler.js 检索评分∤来源展示
+        : 语义检索∤关键词命中 Console 可见
+        测试体系
+        : 后端 +5（余弦相似度4 + search_info + 同义词）
+        : 后端合计 176测试 ∤ 前端 57测试
+        : CI修复 pytest-cov版本bug
 ```

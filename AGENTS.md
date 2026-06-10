@@ -47,7 +47,13 @@ FastAPI Server (backend/server.py)
     │   ├── L2 短期记忆: 滑动窗口(10条)+递归摘要
     │   ├── L3 主题上下文: 品类/品牌/季节/平台偏好
     │   ├── L4 分析历史: record_analysis → title提取
-    │   └── L5 长期记忆: domains/brands/seasons/user_prefs
+    │   ├── L5 长期记忆: domains/brands/seasons/user_prefs
+    │   └── RAG语义检索: LLM embedding → SQLite向量 → 余弦相似度排名
+    │
+    ├── Storage (backend/store.py)
+    │   ├── SQLiteBackend: 默认存储（WAL模式并发安全）
+    │   ├── sessions/long_term/memory_vectors 三表
+    │   └── JSON文件兼容（STORE_BACKEND=json）
     │
     ├── Precheck Engine (backend/precheck.py)
     │   ├── entity驱动: category > subject_in_input > goal.品类
@@ -130,9 +136,9 @@ FastAPI Server (backend/server.py)
 ```
 ├── AGENTS.md              ← 本文件
 ├── docs/                  ← 12 文档
-├── backend/               ← 22 模块 / 4,354 行
-│   ├── agent_engine.py    490行  Agent Pipeline
-│   ├── memory.py          455行  五层记忆系统
+├── backend/               ← 22 模块 / 4,700+ 行
+│   ├── agent_engine.py    506行  Agent Pipeline
+│   ├── memory.py          590行  六层记忆系统 + RAG语义检索
 │   ├── tools.py           444行  8个工具实现
 │   ├── report.py          255行  JSON报告生成器
 │   ├── intent_registry.py 243行  意图元数据中心
@@ -143,7 +149,7 @@ FastAPI Server (backend/server.py)
 │   ├── observability.py   116行  指标收集
 │   ├── conversation.py    247行  多轮场景检测
 │   ├── decompose_engine.py 103行 DAG自主拆解
-│   ├── store.py           148行  SQLite存储后端
+│   ├── store.py           186行  SQLite存储后端（向量表+CRUD）
 │   ├── auth.py            114行  认证+限流
 │   ├── reflect.py          57行  反思引擎
 │   ├── report_pipeline.py  64行  报告管道辅助函数
@@ -163,15 +169,15 @@ FastAPI Server (backend/server.py)
 │   ├── sse.js             150行 SSE流式+重试+sendMessage
 │   ├── handler.js         554行 SSE事件处理+layout修复
 │   └── tests/             5个测试文件 / 57 passed
-├── tests/                 12个测试文件 / 170 passed
+├── tests/                 12个测试文件 / 176 passed
 │   ├── test_agent_engine.py  19 Pipeline流程
 │   ├── test_config.py         5 配置加载
 │   ├── test_conversation.py  26 多轮对话
 │   ├── test_intent_registry.py 11 注册表
 │   ├── test_llm_client.py    15 重试机制
 │   ├── test_logging_setup.py  8 日志
-│   ├── test_memory.py        10 记忆系统
-│   ├── test_memory_history.py 8 历史检索
+│   ├── test_memory.py        14 记忆系统 + 余弦相似度
+│   ├── test_memory_history.py 10 语义检索 + 同义词匹配
 │   ├── test_pipeline.py       8 DAG/预检
 │   ├── test_report_clean.py   8 报告清理
 │   ├── test_server.py        13 API端点+SSE
@@ -202,6 +208,7 @@ data: {"type":"clarify","message":"..."}  // 信息不足时
 data: {"type":"phase","phase":"decompose","status":"done","data":{"tasks":[...],"_llm_generated":true}}
 data: {"type":"phase","phase":"tool_mapping","status":"done","data":{"mappings":[...]}}
 data: {"type":"phase","phase":"execute","status":"step","data":{...}}
+data: {"type":"memory_search","data":{"query":"...","results":[...],"latency_ms":123,"method":"semantic|keyword","injected_count":1}}
 data: {"type":"result","content":"{json报告}"}
 data: {"type":"quality_review","data":{"passed":true,"scores":{...}}}
 data: {"type":"summary","data":{"tokens":...,"latency_ms":...}}
@@ -219,8 +226,9 @@ data: {"type":"done"}
 4. ✅ LLM驱动趋势/价格/竞品/评分工具
 5. ✅ 模型分级: flash轻量/pro深度
 6. ✅ Phase 7反思修正，三维评分≥7阈值
-7. ✅ 五层记忆架构，滑动窗口+递归摘要
-8. ✅ Console面板实时展示Pipeline+Prompt
-9. ✅ JSON Schema前端渲染，根除类名幻觉
-10. ✅ 前置校验entity驱动+user_input兜底
-11. ✅ 227项自动化测试（170后端 + 57前端） + GitHub Actions CI（pytest + npm test）
+7. ✅ 六层记忆 + RAG语义检索（LLM embedding → SQLite向量 → 余弦相似度）
+8. ✅ 服饰类目同义词映射（8个类目体系，零依赖）
+9. ✅ Console面板实时展示Pipeline+Prompt+语义检索过程
+10. ✅ JSON Schema前端渲染，根除类名幻觉
+11. ✅ 前置校验entity驱动+user_input兜底
+12. ✅ 233项自动化测试（176后端 + 57前端） + GitHub Actions CI（pytest + npm test + Docker）
