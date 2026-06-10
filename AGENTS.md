@@ -27,7 +27,7 @@
     ▼
 FastAPI Server (backend/server.py)
     │
-    │   ├── Agent Engine (backend/agent_engine.py) — 868行
+    │   ├── Agent Engine (backend/agent_engine.py) — 490行
     │   │   ├── [DEPRECATED v7] 旧意图/预检/报告/反思方法已标记，由提取模块替代
     │   ├── Phase 0: 多轮对话检测 → conversation.py
     │   ├── Phase 1: 意图识别       → deepseek-chat (记忆注入)
@@ -128,62 +128,60 @@ FastAPI Server (backend/server.py)
 ## 文件结构
 
 ```
-本项目根目录（`./`）
 ├── AGENTS.md              ← 本文件
-├── docs/                  ← 文档目录
-│   ├── product_summary.md     产品与技术总结
-│   ├── product_roadmap.md     产品路线图
-│   ├── architecture_optimization.md  架构优化方案
-│   ├── sse_reconnect_design.md   SSE重连设计
-│   ├── production_plan.md     生产级优化执行计划
-│   ├── test_cases.md          测试用例
-│   ├── deploy.md              部署指南
-│   └── archive/               历史存档
-├── backend/               ← 23 模块 / 4,147 行
-│   ├── agent_engine.py    616行  Agent Pipeline
-│   ├── memory.py          433行  五层记忆系统
-│   ├── tools.py           397行  8个工具实现
+├── docs/                  ← 12 文档
+├── backend/               ← 22 模块 / 4,354 行
+│   ├── agent_engine.py    490行  Agent Pipeline
+│   ├── memory.py          455行  五层记忆系统
+│   ├── tools.py           444行  8个工具实现
 │   ├── report.py          255行  JSON报告生成器
-│   ├── intent_registry.py 227行  意图元数据中心
-│   ├── config.py          132行  配置管理
-│   ├── llm_client.py      138行  LLM客户端
-│   ├── precheck.py        140行  前置校验引擎
-│   ├── intent.py          120行  意图识别路由 + goal_to_text
+│   ├── intent_registry.py 243行  意图元数据中心
+│   ├── config.py          170行  配置管理
+│   ├── llm_client.py      194行  LLM客户端
+│   ├── precheck.py        137行  前置校验引擎
+│   ├── intent.py          133行  意图识别路由 + goal_to_text
 │   ├── observability.py   116行  指标收集
-│   ├── conversation.py    128行  多轮场景检测
-│   ├── decompose_engine.py 109行 DAG自主拆解
-│   ├── storage.py         147行  存储后端
-│   ├── auth.py            100行  认证+限流
-│   ├── reflect.py         62行   反思引擎
-│   ├── image_optimizer.py 53行   文生图优化
+│   ├── conversation.py    247行  多轮场景检测
+│   ├── decompose_engine.py 103行 DAG自主拆解
+│   ├── store.py           148行  SQLite存储后端
+│   ├── auth.py            114行  认证+限流
+│   ├── reflect.py          57行  反思引擎
+│   ├── report_pipeline.py  64行  报告管道辅助函数
 │   ├── startup_diag.py    232行  启动自检
-│   └── harness/           421行  管道基础设施
-│       ├── tracer.py      98行   全链路追踪
-│       ├── router.py      80行   CostRouter
-│       ├── executor.py    95行   ParallelExecutor
-│       ├── registry.py    83行   ToolRegistry
-│       └── dag_loader.py  66行   DAG模板加载
+│   ├── logging_setup.py    73行  日志配置
+│   └── harness/           416行  管道基础设施
+│       ├── tracer.py       98行  全链路追踪
+│       ├── router.py       77行  CostRouter
+│       ├── executor.py     95行  ParallelExecutor
+│       ├── registry.py     83行  ToolRegistry
+│       └── dag_loader.py   63行  DAG模板加载
 ├── frontend/
-│   ├── index.html         398行 HTML骨架+全局state
-│   ├── style.css          247行 CSS设计系统
-│   ├── render.js           71行 报告渲染引擎(R.* + renderReport)
-│   ├── console.js          26行 Console日志(clog/clearConsole)
-│   ├── sse.js             145行 SSE流式+重试+sendMessage
-│   ├── handler.js         315行 SSE事件处理+layout修复
-│   └── tests/             2个测试 / 14 passed
-├── tests/                 9个测试文件 / 93passed+2xfailed
-│   ├── test_agent_engine.py  Pipeline流程
-│   ├── test_config.py
-│   ├── test_intent_registry.py
-│   ├── test_memory.py
-│   ├── test_pipeline.py   工具/拆解/预检
-│   ├── test_report_clean.py
-│   ├── test_server.py     API端点+SSE
-│   └── test_tools.py      LLM驱动工具
+│   ├── index.html         109行 HTML骨架+全局state
+│   ├── style.css          264行 CSS设计系统
+│   ├── render.js           68行 报告渲染引擎(R.* + renderReport)
+│   ├── console.js          25行 Console日志(clog/clearConsole)
+│   ├── sse.js             150行 SSE流式+重试+sendMessage
+│   ├── handler.js         554行 SSE事件处理+layout修复
+│   └── tests/             5个测试文件 / 57 passed
+├── tests/                 12个测试文件 / 170 passed
+│   ├── test_agent_engine.py  19 Pipeline流程
+│   ├── test_config.py         5 配置加载
+│   ├── test_conversation.py  26 多轮对话
+│   ├── test_intent_registry.py 11 注册表
+│   ├── test_llm_client.py    15 重试机制
+│   ├── test_logging_setup.py  8 日志
+│   ├── test_memory.py        10 记忆系统
+│   ├── test_memory_history.py 8 历史检索
+│   ├── test_pipeline.py       8 DAG/预检
+│   ├── test_report_clean.py   8 报告清理
+│   ├── test_server.py        13 API端点+SSE
+│   ├── test_store.py         16 SQLite后端
+│   └── test_tools.py         23 LLM驱动工具
 ├── .github/workflows/
-│   └── test.yml           CI自动运行pytest+ruff
+│   └── test.yml           CI: pytest + npm test（双作业并行）
 └── data/
-    └── memory_store.json  持久化记忆
+    ├── memory_store.json  持久化记忆
+    └── report_cache.json  24h报告缓存
 ```
 
 ## API 设计
@@ -225,4 +223,4 @@ data: {"type":"done"}
 8. ✅ Console面板实时展示Pipeline+Prompt
 9. ✅ JSON Schema前端渲染，根除类名幻觉
 10. ✅ 前置校验entity驱动+user_input兜底
-11. ✅ 32项自动化测试 + GitHub Actions CI
+11. ✅ 227项自动化测试（170后端 + 57前端） + GitHub Actions CI（pytest + npm test）
