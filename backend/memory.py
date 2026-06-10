@@ -21,6 +21,20 @@ MEMORY_FILE = DATA_DIR / "memory_store.json"
 class MemorySystem:
     """Agent记忆系统"""
 
+    # 服饰电商类目同义词映射（大类→相关词，用于关键词检索兜底）
+    CATEGORY_SYNONYMS = {
+        "连衣裙": ["连衣裙", "茶歇裙", "碎花裙", "衬衫裙", "A字裙", "吊带裙", "裹身裙",
+                   "法式裙", "缎面裙", "娃娃裙", "直筒裙", "衬衫裙", "百褶裙"],
+        "上衣": ["上衣", "衬衫", "T恤", "针织衫", "打底衫", "雪纺衫", "吊带",
+                "POLO衫", "卫衣", "毛衣"],
+        "半身裙": ["半身裙", "半裙", "迷笛裙", "铅笔裙", "百褶裙", "伞裙", "皮裙"],
+        "裤子": ["裤子", "牛仔裤", "阔腿裤", "直筒裤", "短裤", "运动裤", "休闲裤"],
+        "外套": ["外套", "西装", "风衣", "夹克", "大衣", "牛仔外套", "针织开衫"],
+        "女装": ["女装", "连衣裙", "上衣", "半身裙", "裤子", "外套", "套装"],
+        "套装": ["套装", "西服套装", "两件套", "上衣+半裙"],
+        "旗袍": ["旗袍", "新中式", "改良旗袍"],
+    }
+
     def __init__(self):
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
@@ -371,14 +385,23 @@ class MemorySystem:
                     r["timestamp"] = r.get("_timestamp", 0)
                 return vec_results, search_info
 
-        # 回退：关键词匹配（原有逻辑）
+        # 回退：关键词匹配（含同义词扩展）
         search_info["latency_ms"] = round((time.time() - t0) * 1000)
         related = []
         for h in reversed(history):
-            cat_match = category and (
-                category in h.get("category", "")
-                or h.get("category", "") in category
-            )
+            # 原始类目匹配
+            h_cat = h.get("category", "")
+            cat_match = False
+            if category and h_cat:
+                # 精确包含匹配
+                if category in h_cat or h_cat in category:
+                    cat_match = True
+                else:
+                    # 同义词扩展匹配
+                    syns_new = set(self.CATEGORY_SYNONYMS.get(category, [category]))
+                    syns_hist = set(self.CATEGORY_SYNONYMS.get(h_cat, [h_cat]))
+                    if syns_new & syns_hist:
+                        cat_match = True
             intent_match = intent_type and h.get("intent", "") == intent_type
             if cat_match or intent_match:
                 related.append({**h, "_score": -1, "_source": "keyword"})

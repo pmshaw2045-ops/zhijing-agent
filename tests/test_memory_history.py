@@ -102,3 +102,11 @@ class TestFindRelatedAnalyses:
         assert "query" in info
         assert "method" in info
         assert "latency_ms" in info
+
+    @pytest.mark.asyncio
+    async def test_synonym_matching(self, memory):
+        """同义词桥接：\"茶歇裙\" 匹配 category=\"连衣裙\" 的历史记录"""
+        results, info = await memory.find_related_analyses("test-sid", "茶歇裙")
+        # "茶歇裙" 在连衣裙同义词表内，应匹配到 category="连衣裙" 的记录
+        assert len(results) >= 1
+        assert any(r.get("category") == "连衣裙" for r in results)
