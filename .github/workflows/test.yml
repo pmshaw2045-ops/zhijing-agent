@@ -33,7 +33,8 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest tests/ -v --tb=long -m "not integration" 2>&1 | tee /tmp/test-output.txt
+          pip install --upgrade pytest-cov
+          pytest --cov=backend --cov-report=term-missing tests/ -v --tb=short -m "not integration" 2>&1 | tee /tmp/test-output.txt
 
       - name: Upload test output
         if: failure()
