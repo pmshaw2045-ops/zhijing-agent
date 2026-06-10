@@ -78,3 +78,34 @@ class TestInjectableContextFormat:
         # 空 session 应返回空字符串或基本结构
         ctx = ms.get_injectable_context("test_empty_session")
         assert isinstance(ctx, str)
+
+
+class TestCosineSimilarity:
+    """余弦相似度纯函数"""
+
+    def test_identical_vectors(self):
+        from backend.memory import MemorySystem
+        a = [1.0, 0.0, 0.0]
+        score = MemorySystem._cosine_similarity(a, a)
+        assert abs(score - 1.0) < 1e-6
+
+    def test_orthogonal_vectors(self):
+        from backend.memory import MemorySystem
+        a = [1.0, 0.0]
+        b = [0.0, 1.0]
+        score = MemorySystem._cosine_similarity(a, b)
+        assert abs(score) < 1e-6
+
+    def test_zero_vector(self):
+        from backend.memory import MemorySystem
+        a = [0.0, 0.0]
+        b = [1.0, 0.0]
+        score = MemorySystem._cosine_similarity(a, b)
+        assert score == 0.0
+
+    def test_partial_similarity(self):
+        from backend.memory import MemorySystem
+        a = [1.0, 2.0, 3.0]
+        b = [2.0, 4.0, 6.0]  # a * 2
+        score = MemorySystem._cosine_similarity(a, b)
+        assert abs(score - 1.0) < 1e-6

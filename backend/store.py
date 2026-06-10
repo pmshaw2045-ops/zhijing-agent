@@ -43,7 +43,16 @@ class SQLiteBackend:
                 value JSON NOT NULL DEFAULT '{}',
                 updated_at REAL NOT NULL DEFAULT (unixepoch())
             );
+            CREATE TABLE IF NOT EXISTS memory_vectors (
+                id TEXT PRIMARY KEY,
+                session_id TEXT NOT NULL,
+                vector BLOB NOT NULL,
+                metadata JSON NOT NULL DEFAULT '{}',
+                created_at REAL NOT NULL DEFAULT (unixepoch())
+            );
             CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at);
+            CREATE INDEX IF NOT EXISTS idx_mv_session ON memory_vectors(session_id);
+            CREATE INDEX IF NOT EXISTS idx_mv_created ON memory_vectors(created_at);
         """)
         conn.commit()
 
@@ -77,12 +86,6 @@ class SQLiteBackend:
     def get_long_term(self) -> dict:
         """加载所有长期记忆为 dict"""
         rows = self._get_conn().execute("SELECT key, value FROM long_term").fetchall()
-        result = {}
-        for r in rows:
-            try:
-                result[r["key"].split(":")] = json.loads(r["value"])
-            except Exception:
-                pass
         # 重建嵌套结构
         lt = {"domains": {}, "brands": {}, "seasons": {},
               "platforms": {}, "user_preferences": {}, "knowledge_snippets": []}
@@ -124,6 +127,41 @@ class SQLiteBackend:
         if hasattr(self._local, 'conn') and self._local.conn:
             self._local.conn.close()
             self._local.conn = None
+
+    # ── Memory Vectors ──
+
+    def save_vector(self, vector_id: str, session_id: str,
+                    vector: list[float], metadata: dict):
+        """保存一条向量记录"""
+        import json
+        vec_json = json.dumps(vector)
+        meta_json = json.dumps(metadata, ensure_ascii=False)
+        self._get_conn().execute(
+            "INSERT OR REPLACE INTO memory_vectors (id, session_id, vector, metadata, created_at) "
+            "VALUES (?, ?, ?, ?, unixepoch())",
+            (vector_id, session_id, vec_json, meta_json)
+        )
+        self._get_conn().commit()
+
+    def get_vectors(self, since_days: int = 30, limit: int = 500) -> list[dict]:
+        """获取最近 N 天的向量记录"""
+        import json
+        rows = self._get_conn().execute(
+            "SELECT id, session_id, vector, metadata, created_at "
+            "FROM memory_vectors WHERE created_at > unixepoch() - ? "
+            "ORDER BY created_at DESC LIMIT ?",
+            (since_days * 86400, limit)
+        ).fetchall()
+        results = []
+        for r in rows:
+            results.append({
+                "id": r["id"],
+                "session_id": r["session_id"],
+                "vector": json.loads(r["vector"]),
+                "metadata": json.loads(r["metadata"]),
+                "created_at": r["created_at"],
+            })
+        return results
 
 
 def migrate_json_to_sqlite(json_path: Path = DATA_DIR / "memory_store.json",

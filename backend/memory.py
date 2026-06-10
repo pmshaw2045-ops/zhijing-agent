@@ -26,15 +26,30 @@ class MemorySystem:
         self._lock = threading.Lock()
         self._async_lock = asyncio.Lock()
 
-        # 存储后端：STORE_BACKEND=sqlite 时使用 SQLite，否则使用 JSON
+        # 存储后端：sqlite（默认）或 json（兼容旧版）
         self._backend = None
-        if os.environ.get("STORE_BACKEND", "").lower() == "sqlite":
-            from .store import SQLiteBackend
-            self._backend = SQLiteBackend()
+        self._store = {}  # JSON 模式用；SQLite 模式仅 stats() 兼容
+        use_sqlite = True
+        try:
+            from .config import STORE_BACKEND as _store_backend
+            use_sqlite = _store_backend.lower() == "sqlite"
+        except Exception:
+            use_sqlite = os.environ.get("STORE_BACKEND", "sqlite").lower() == "sqlite"
 
-        self._store = self._load()
-        self._dirty = False
-        self._ensure_defaults()
+        if use_sqlite:
+            from .store import SQLiteBackend, migrate_json_to_sqlite
+            self._backend = SQLiteBackend()
+            # 首次使用 SQLite 时自动迁移 JSON 数据
+            if MEMORY_FILE.exists():
+                migrated = migrate_json_to_sqlite(MEMORY_FILE)
+                if migrated > 0:
+                    logger.info(f"已从 JSON 迁移 {migrated} 个会话到 SQLite")
+                MEMORY_FILE.rename(MEMORY_FILE.with_suffix(".json.bak"))
+            self._store = {"sessions": {}, "long_term": {"knowledge_snippets": []}}
+        else:
+            self._store = self._load()
+            self._dirty = False
+            self._ensure_defaults()
 
     def _load(self) -> dict:
         with self._lock:
@@ -53,19 +68,17 @@ class MemorySystem:
             MEMORY_FILE.write_text(json.dumps(self._store, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def mark_dirty(self):
-        """标记脏数据。SQLite模式下立即写回，JSON模式下延迟刷新"""
-        if self._backend and hasattr(self, '_active_sid') and hasattr(self, '_active_session'):
-            self._backend.set_session(self._active_sid, self._active_session)
-            return
+        """标记数据需要持久化。flush() 时统一写入"""
         self._dirty = True
 
     async def flush(self):
-        """异步刷新脏数据到磁盘"""
-        if self._backend:
-            return  # SQLite 无需刷新
+        """异步刷新脏数据到磁盘（JSON: 写文件，SQLite: 写数据库）"""
         if self._dirty:
-            import asyncio
-            await asyncio.to_thread(self._save)
+            if self._backend and hasattr(self, '_active_sid') and hasattr(self, '_active_session'):
+                self._backend.set_session(self._active_sid, self._active_session)
+            elif not self._backend:
+                import asyncio
+                await asyncio.to_thread(self._save)
             self._dirty = False
 
     def _ensure_defaults(self):
@@ -320,30 +333,58 @@ class MemorySystem:
         self._ensure_session(session_id)["working"] = working
         self.mark_dirty()
 
-    def find_related_analyses(self, session_id: str, category: str,
-                               intent_type: str = "") -> list[dict]:
-        """查找同类目/同类意图的历史分析记录（按时间倒序，最多 3 条）"""
+        # 异步 embedding + 向量存储（不阻塞主流程）
+        try:
+            import asyncio
+            asyncio.create_task(self._index_analysis(
+                session_id, query, intent, summary
+            ))
+        except Exception:
+            pass
+
+    async def find_related_analyses(self, session_id: str, category: str,
+                                     intent_type: str = "") -> tuple[list[dict], dict]:
+        """语义检索同类目/同类意图的历史分析记录。
+        
+        返回 (results, search_info)，search_info 包含检索过程数据供 Console 展示。
+        语义检索 score < 0.3 时回退到关键词匹配。
+        """
+        search_info = {"query": f"{category} {intent_type}", "latency_ms": 0, "method": "keyword"}
         if not session_id or not (category or intent_type):
-            return []
+            return [], search_info
         session = self._get_session(session_id)
         context = session.get("working", {}).get("context", {})
         history = context.get("analysis_history", [])
 
+        # 语义检索（向量相似度）
+        t0 = time.time()
+        search_text = f"{category} {intent_type}"
+        query_vec = await self.embed_text(search_text)
+        if query_vec:
+            vec_results = await self.search_vectors(query_vec, top_k=5, min_score=0.3)
+            search_info["latency_ms"] = round((time.time() - t0) * 1000)
+            if vec_results:
+                search_info["method"] = "semantic"
+                # 标准化字段名：向量存储用 summary，下游用 key_findings
+                for r in vec_results:
+                    r["key_findings"] = r.get("summary", "")
+                    r["timestamp"] = r.get("_timestamp", 0)
+                return vec_results, search_info
+
+        # 回退：关键词匹配（原有逻辑）
+        search_info["latency_ms"] = round((time.time() - t0) * 1000)
         related = []
         for h in reversed(history):
-            # 匹配类目（包含关系：品类名出现在类目中或反之）
             cat_match = category and (
                 category in h.get("category", "")
                 or h.get("category", "") in category
             )
-            # 匹配意图
             intent_match = intent_type and h.get("intent", "") == intent_type
-
             if cat_match or intent_match:
-                related.append(h)
+                related.append({**h, "_score": -1, "_source": "keyword"})
                 if len(related) >= 3:
                     break
-        return related
+        return related, search_info
 
     def get_working_context(self, session_id: str) -> dict:
         """获取增强的工作记忆上下文"""
@@ -437,6 +478,89 @@ class MemorySystem:
             "working": self.get_working_memory(session_id),
             "long_term": self.get_long_term(),
         }
+
+    # === 语义检索（RAG） ===
+
+    @staticmethod
+    def _cosine_similarity(a: list[float], b: list[float]) -> float:
+        """纯 Python 余弦相似度，零依赖"""
+        dot = sum(x * y for x, y in zip(a, b))
+        norm_a = sum(x * x for x in a) ** 0.5
+        norm_b = sum(y * y for y in b) ** 0.5
+        if norm_a < 1e-10 or norm_b < 1e-10:
+            return 0.0
+        return dot / (norm_a * norm_b)
+
+    async def embed_text(self, text: str) -> list[float] | None:
+        """用 LLM 将文本转为 embedding 向量。失败返回 None 且不抛异常。"""
+        if not text or not text.strip():
+            return None
+        try:
+            from .llm_client import chat_sync, extract_json
+            prompt = (
+                "你是一个文本向量化工具。将以下文本转为128维浮点数向量。"
+                "输出纯JSON数组，如[0.12, -0.34, 0.56, ...]，128个元素。"
+                "保持一致性：语义相似的文本输出向量应余弦相似度高。\n\n"
+                f"文本: {text[:800]}"
+            )
+            raw = chat_sync(prompt, max_tokens=600)
+            vec = extract_json(raw)
+            if isinstance(vec, list) and len(vec) == 128:
+                return [float(v) for v in vec]
+            return None
+        except Exception as e:
+            logger.warning(f"embed_text failed: {e}")
+            return None
+
+    async def search_vectors(self, query_vec: list[float], top_k: int = 5,
+                              min_score: float = 0.0) -> list[dict]:
+        """从 SQLite 加载向量，余弦相似度检索 top-K"""
+        if not query_vec:
+            return []
+        try:
+            if not self._backend:
+                return []
+            vectors = self._backend.get_vectors(limit=500)
+        except Exception as e:
+            logger.warning(f"search_vectors load failed: {e}")
+            return []
+
+        scored = []
+        for v in vectors:
+            score = self._cosine_similarity(query_vec, v["vector"])
+            if score >= min_score:
+                scored.append({
+                    **v["metadata"],
+                    "_score": round(score, 4),
+                    "_session_id": v["session_id"],
+                    "_timestamp": v["created_at"],
+                })
+
+        scored.sort(key=lambda x: x["_score"], reverse=True)
+        return scored[:top_k]
+
+    async def _index_analysis(self, session_id: str, query: str,
+                               intent: dict, summary: str):
+        """分析完成后异步 embedding + 存储（不阻塞主流程）"""
+        if not self._backend:
+            return
+        text = f"{intent.get('intent_type', '')} {intent.get('goal', {}).get('品类', '')} {summary[:200]}"
+        vec = await self.embed_text(text)
+        if vec is None:
+            return
+        try:
+            import hashlib
+            vec_id = f"analysis:{session_id}:{int(time.time())}"
+            metadata = {
+                "query": query[:200],
+                "intent": intent.get("intent_type", ""),
+                "category": intent.get("goal", {}).get("品类", ""),
+                "summary": summary[:300],
+                "source": "analysis_history",
+            }
+            self._backend.save_vector(vec_id, session_id, vec, metadata)
+        except Exception as e:
+            logger.warning(f"_index_analysis save failed: {e}")
 
     # === 统计 ===
     def stats(self, session_id: str = None) -> dict:

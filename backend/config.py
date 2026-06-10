@@ -126,6 +126,11 @@ ARK_MODEL = "doubao-seedream-5-0-260128"
 # Provider: auto | tavily | bocha
 SEARCH_PROVIDER = os.environ.get("SEARCH_PROVIDER", "auto")
 
+# ============================================================
+# 存储后端 — sqlite（默认）| json（兼容旧版）
+# ============================================================
+STORE_BACKEND = os.environ.get("STORE_BACKEND", "sqlite")
+
 # 统一搜索密钥（新，优先）
 SEARCH_API_KEY = get_key("SEARCH_API_KEY") or ""
 

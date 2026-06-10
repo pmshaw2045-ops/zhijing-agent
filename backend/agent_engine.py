@@ -282,8 +282,21 @@ class AgentEngine:
         # ====== Phase 6: 报告生成 (deepseek-chat, 低延迟)
         # 注入同类目历史分析参考
         category = intent.get("goal", {}).get("品类", "") or intent.get("entities", {}).get("category", "")
-        related_history = self.memory.find_related_analyses(session_id, category,
-                                                             intent.get("intent_type", ""))
+        search_result, search_info = await self.memory.find_related_analyses(
+            session_id, category, intent.get("intent_type", ""))
+        related_history = search_result  # 兼容下游用法
+        # 语义检索结果展示到 Console
+        yield {"type": "memory_search", "data": {
+            "query": search_info.get("query", ""),
+            "results": [{
+                "_score": r.get("_score", 0),
+                "summary": (r.get("key_findings") or r.get("summary") or r.get("query", ""))[:60],
+                "source": r.get("_source", "semantic"),
+            } for r in search_result[:5]],
+            "latency_ms": search_info.get("latency_ms", 0),
+            "method": search_info.get("method", "keyword"),
+            "injected_count": 0,
+        }}
         history_context = ""
         if related_history:
             lines = []

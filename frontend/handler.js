@@ -211,6 +211,18 @@ function handleSSEEvent(event, bubble) {
     var bubbleEl = bubble.querySelector('.msg-bubble');
     bubbleEl.insertAdjacentHTML('beforeend', html);
 
+  } else if (type === 'memory_search') {
+    var ms = event.data || {};
+    var msResults = ms.results || [];
+    clog('memory', '语义检索: ' + (ms.query || '') + ' → ' + msResults.length + '条结果 (' + (ms.latency_ms || '?') + 'ms)');
+    msResults.forEach(function(r) {
+      var pct = Math.round((r._score || 0) * 100);
+      clog('memory', '  [' + pct + '%] ' + (r.summary || r.query || '') + ' (来源: ' + (r.source || r._source || '?') + ')');
+    });
+    if (ms.injected_count) {
+      clog('memory', '已注入 ' + ms.injected_count + ' 条历史参考到报告 Prompt');
+    }
+
   } else if (type === 'result') {
     var bubbleEl = bubble.querySelector('.msg-bubble');
     var content = event.content;
