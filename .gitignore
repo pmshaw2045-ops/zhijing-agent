@@ -15,3 +15,4 @@ htmlcov/
 *.html
 data/*.db
 data/*.sqlite
+*.bak
