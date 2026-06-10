@@ -373,7 +373,13 @@ class MemorySystem:
         # 语义检索（向量相似度）
         t0 = time.time()
         search_text = f"{category} {intent_type}"
-        query_vec = await self.embed_text(search_text)
+        query_vec = None
+        # 如果数据库中有向量再尝试 embedding，避免无谓的 LLM 调用
+        try:
+            if self._backend and self._backend.get_vectors(limit=1):
+                query_vec = await self.embed_text(search_text)
+        except Exception:
+            pass
         if query_vec:
             # LLM embedding 一致性约 0.5-0.6，不使用硬阈值，用排序替代
             vec_results = await self.search_vectors(query_vec, top_k=5, min_score=0.0)

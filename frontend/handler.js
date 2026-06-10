@@ -216,8 +216,8 @@ function handleSSEEvent(event, bubble) {
     var msResults = ms.results || [];
     clog('memory', '语义检索: ' + (ms.query || '') + ' → ' + msResults.length + '条结果 (' + (ms.latency_ms || '?') + 'ms)');
     msResults.forEach(function(r) {
-      var pct = Math.round((r._score || 0) * 100);
-      clog('memory', '  [' + pct + '%] ' + (r.summary || r.query || '') + ' (来源: ' + (r.source || r._source || '?') + ')');
+      var pct = r._score >= 0 ? Math.round((r._score || 0) * 100) + '%' : '';
+      clog('memory', '  ' + (pct ? '[' + pct + '] ' : '') + (r.summary || r.query || '') + ' (来源: ' + (r.source || r._source || '?') + ')');
     });
     if (ms.injected_count) {
       clog('memory', '已注入 ' + ms.injected_count + ' 条历史参考到报告 Prompt');
