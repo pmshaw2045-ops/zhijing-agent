@@ -498,15 +498,26 @@ class MemorySystem:
         try:
             from .llm_client import chat_sync, extract_json
             prompt = (
-                "你是一个文本向量化工具。将以下文本转为128维浮点数向量。"
-                "输出纯JSON数组，如[0.12, -0.34, 0.56, ...]，128个元素。"
-                "保持一致性：语义相似的文本输出向量应余弦相似度高。\n\n"
+                "你是一个文本向量化工具。将以下文本转为浮点数向量。\n"
+                "规则：\n"
+                "1. 输出一个JSON数组，包含16个浮点数\n"
+                "2. 每个数的范围在-1.0到1.0之间\n"
+                "3. 语义越相似的两个文本，输出向量的余弦相似度越高\n"
+                "4. 只输出JSON数组，不要任何说明文字\n\n"
                 f"文本: {text[:800]}"
             )
-            raw = chat_sync(prompt, max_tokens=600)
+            # 用 asyncio.to_thread 避免阻塞事件循环，5 秒超时
+            import asyncio
+            raw = await asyncio.wait_for(
+                asyncio.to_thread(lambda: chat_sync(prompt, max_tokens=300)),
+                timeout=5.0
+            )
             vec = extract_json(raw)
-            if isinstance(vec, list) and len(vec) == 128:
-                return [float(v) for v in vec]
+            if isinstance(vec, list) and len(vec) >= 4:
+                return [float(v) for v in vec[:16]]
+            return None
+        except asyncio.TimeoutError:
+            logger.warning(f"embed_text timeout for '{text[:40]}...'")
             return None
         except Exception as e:
             logger.warning(f"embed_text failed: {e}")

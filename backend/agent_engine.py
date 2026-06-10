@@ -286,17 +286,21 @@ class AgentEngine:
             session_id, category, intent.get("intent_type", ""))
         related_history = search_result  # 兼容下游用法
         # 语义检索结果展示到 Console
-        yield {"type": "memory_search", "data": {
-            "query": search_info.get("query", ""),
-            "results": [{
-                "_score": r.get("_score", 0),
-                "summary": (r.get("key_findings") or r.get("summary") or r.get("query", ""))[:60],
-                "source": r.get("_source", "semantic"),
-            } for r in search_result[:5]],
-            "latency_ms": search_info.get("latency_ms", 0),
-            "method": search_info.get("method", "keyword"),
-            "injected_count": 0,
-        }}
+        mem_search_event = {
+            "type": "memory_search", "data": {
+                "query": search_info.get("query", ""),
+                "results": [{
+                    "_score": r.get("_score", 0),
+                    "summary": (r.get("key_findings") or r.get("summary") or r.get("query", ""))[:60],
+                    "source": r.get("_source", "semantic"),
+                } for r in search_result[:5]],
+                "latency_ms": search_info.get("latency_ms", 0),
+                "method": search_info.get("method", "keyword"),
+                "injected_count": len(related_history),
+            }}
+        logger.info(f"yielding memory_search: {mem_search_event['data']['method']} "
+                     f"{len(mem_search_event['data']['results'])} results")
+        yield mem_search_event
         history_context = ""
         if related_history:
             lines = []
