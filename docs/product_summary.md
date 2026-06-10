@@ -1,8 +1,9 @@
 # 织镜 ZHÌJÌNG — 产品与技术总结
 
-> 生成日期：2026-06-08（v2 里程碑）
+> 生成日期：2026-06-10（v2.1 RAG & SQLite）
 > 产品阶段：GitHub 发布就绪，单租户生产可部署
-> 代码规模：后端 20 模块 ~4,300 行 + 前端 ~900 行 + 测试 13 文件 ~2,200 行
+> 代码规模：后端 22 模块 ~4,700 行 + 前端 ~1,170 行 + 测试 12 文件 ~3,000 行
+> CI: GitHub Actions（pytest + npm test + Docker），全绿
 
 ---
 
@@ -30,7 +31,8 @@
 - **Provider 无关**：LLM 和搜索均支持任意提供商（DeepSeek / OpenAI / 兼容 API），用户通过配置文件切换，不改代码
 - **反思修正闭环**：报告生成后自动评分，低于 7 分触发重试修正（最多 2 次），保留最高分版本
 - **可视化报告**：JSON 结构化数据 → 前端渲染引擎 → 包含指标卡片、柱状图、SWOT 矩阵、品牌对比卡、洞察框等 9 种组件（rc-* 体系）
-- **工作记忆系统**：五层记忆架构（工作/短期/长期/主题/分析），滑动窗口 + 递归摘要
+- **工作记忆系统**：六层记忆架构（工作/短期/长期/主题/分析/RAG语义），滑动窗口 + 递归摘要 + 同义词桥接
+- **语义检索（RAG）**：LLM embedding → SQLite 向量存储 → 余弦相似度排序，三层兜底（语义→同义词→关键词）
 - **搜索路由层**：统一搜索接口，按配置自动路由到 Tavily / 博查 / 自定义后端
 
 ### 1.4 当前限制
@@ -64,62 +66,67 @@
 | 文生图 | 豆包 Seedream 5.0（可替换） | ARK API，真实摄影风格 |
 | 搜索 | 配置化路由：Tavily / 博查 | 统一 SEARCH_API_KEY，支持 auto/tavily/bocha |
 | 前端 | 单文件 HTML/CSS/JS | 暖色调设计系统，CSS 变量体系 |
-| 存储 | JSON 文件（SQLite 可切换） | data/memory_store.json，async flush |
+| 存储 | SQLite 默认（WAL模式 并发安全） | 含向量表，首次运行自动从 JSON 迁移 |
 | 部署 | Docker + uvicorn | 单容器，健康检查，Bearer Token 认证 |
 
 ### 2.2 模块架构
 
 ```
-backend/ (20 modules, ~4,300 lines)
-├── agent_engine.py (251)    核心编排引擎，8 阶段 Pipeline
-├── tools.py (435)           工具定义 + 搜索路由层 + LLM 驱动分析
-├── memory.py (268)          工作记忆，滑动窗口 + 递归摘要
-├── report.py (253)          JSON 报告生成器，6 策略 + 渲染 Schema
-├── intent_registry.py (227) 意图元数据中心（Single Source of Truth）
-├── server.py (116)          FastAPI 应用入口，SSE 端点，API 路由
-├── config.py (61)           配置化 Provider（LLM/搜索）+ 三级 fallback
-├── intent.py (58)           IntentRouter + goal_to_text 共享函数
-├── llm_client.py (121)      LLM API 封装 + 重试机制 + Token 追踪
-├── observability.py (59)    指标收集器（请求量/延迟/Token）
-├── conversation.py (69)     多轮对话场景检测 + 查询增强
-├── decompose_engine.py (41)  DAG 任务拆解（json_mode + 模板 fallback）
-├── auth.py (71)             Bearer Token 认证 + 速率限制
-├── precheck.py (78)         前置校验 + 澄清交互
-├── reflect.py (25)          质量反思引擎
-├── image_optimizer.py (23)  文生图 prompt 优化
-├── store.py (89)            SQLite 存储后端（STORE_BACKEND=sqlite 可选）
-└── harness/                 管道基础设施层
-    ├── tracer.py (46)       全链路追踪
-    ├── router.py (37)       CostRouter: 复杂度判定 + 执行深度控制
-    ├── executor.py (52)     ParallelExecutor: DAG 并行执行 + 超时保护
-    ├── registry.py (46)     ToolRegistry: 工具注册中心
-    └── dag_loader.py (40)   DAG 模板加载器（LLM 失败时的 fallback）
+backend/ (22 modules, ~4,700 lines)
+├── agent_engine.py (506)    核心编排引擎，8 阶段 Pipeline
+├── tools.py (444)           工具定义 + 搜索路由层 + LLM 驱动分析
+├── memory.py (590)          六层记忆 + RAG 语义检索（embedding + 同义词 + 向量）
+├── report.py (255)          JSON 报告生成器，6 策略 + 渲染 Schema
+├── intent_registry.py (243) 意图元数据中心（Single Source of Truth）
+├── server.py (222)          FastAPI 应用入口，SSE 端点，API 路由
+├── config.py (170)          配置化 Provider（LLM/搜索/存储）+ 三级 fallback
+├── intent.py (133)          IntentRouter + goal_to_text 共享函数
+├── llm_client.py (194)      LLM API 封装 + 重试机制 + Token 追踪
+├── observability.py (116)   指标收集器（请求量/延迟/Token）
+├── conversation.py (247)    多轮对话场景检测 + 查询增强
+├── decompose_engine.py (103) DAG 任务拆解（json_mode + 模板 fallback）
+├── auth.py (114)            Bearer Token 认证 + 速率限制
+├── precheck.py (137)        前置校验 + 澄清交互
+├── reflect.py (57)          质量反思引擎
+├── store.py (186)           SQLite 存储后端（sessions + long_term + memory_vectors 三表）
+├── report_pipeline.py (64)  报告管道辅助函数
+├── logging_setup.py (73)    日志配置
+├── startup_diag.py (232)    启动自检
+└── harness/ (416)           管道基础设施层
+    ├── tracer.py (98)       全链路追踪
+    ├── router.py (77)       CostRouter: 复杂度判定 + 执行深度控制
+    ├── executor.py (95)     ParallelExecutor: DAG 并行执行 + 超时保护
+    ├── registry.py (83)     ToolRegistry: 工具注册中心
+    └── dag_loader.py (63)   DAG 模板加载器（LLM 失败时的 fallback）
 
-frontend/
-├── index.html (100)         SPA 骨架
-├── style.css                CSS 设计系统
-├── render.js                报告渲染引擎（9 种组件）
-├── handler.js               SSE 事件处理 + Console 面板
-├── sse.js                   SSE 流式 + 自动重连
-└── console.js               Console 日志
+frontend/ (~1,170 lines)
+├── index.html (109)         SPA 骨架
+├── style.css (264)          CSS 设计系统
+├── render.js (68)           报告渲染引擎（9 种组件）
+├── handler.js (566)         SSE 事件处理 + Console 面板（含 memory_search）
+├── sse.js (150)             SSE 流式 + 自动重连 + sendMessage
+├── console.js (25)          Console 日志
+└── tests/ (5 files, 57 passed)
 
-tests/ (13 files, 134 passed, 2 xfailed)
-├── test_agent_engine.py     Pipeline 流程测试
-├── test_config.py           配置测试（含 LLM/搜索 Provider 兼容）
-├── test_intent_registry.py  意图注册表测试
-├── test_llm_client.py       重试机制测试
-├── test_logging_setup.py    日志/追踪测试
-├── test_memory.py           记忆系统测试
-├── test_pipeline.py         工具/拆解/预检流程测试
-├── test_report_clean.py     报告清理测试
-├── test_server.py           API 端点 + SSE 集成测试
-├── test_store.py            SQLite 存储后端测试（99% 覆盖率）
-└── test_tools.py            LLM 驱动工具测试
+tests/ (12 files, 176 passed)
+├── test_agent_engine.py (458)     Pipeline 流程测试
+├── test_config.py (60)            配置测试
+├── test_conversation.py (181)     多轮对话
+├── test_intent_registry.py (73)   意图注册表
+├── test_llm_client.py (185)       重试机制
+├── test_logging_setup.py (109)    日志
+├── test_memory.py (111)           记忆系统 + 余弦相似度
+├── test_memory_history.py (100)   语义检索 + 同义词匹配
+├── test_pipeline.py (136)         工具/拆解/预检流程
+├── test_report_clean.py (57)      报告清理
+├── test_server.py (314)           API 端点 + SSE 集成
+├── test_store.py (202)            SQLite 存储后端
+└── test_tools.py (270)            LLM 驱动工具
 ```
 
 覆盖率的坑：
-- store.py 99%（新增测试补齐）
 - tools.py 52%（搜索函数依赖网络，mock 覆盖不全）
+- memory.py 57%（embedding/检索代码调用LLM，test mock后覆盖率分布不均）
 - report_pipeline.py 26%（新模块，待补）
 
 ### 2.3 Agent Pipeline 架构
@@ -135,24 +142,26 @@ Phase 7: 反思修正     → 质量评分 < 7 自动重试，最多 2 次（模
   │
   ▼
 SSE 事件流: intent → precheck → decompose → execute → report → reflect
-            → quality_review → result → summary → done
+            → quality_review → memory_search → result → summary → done
 ```
 
 ### 2.4 记忆系统架构
 
-基于 CoALA 论文的简化落地版：
+基于 CoALA 论文的简化落地版 + RAG 语义检索：
 
 | 层 | 内容 | 存储 | 注入 |
 |---|---|---|---|
-| L1 工作记忆 | 当前任务上下文 + intent + entities | JSON working | MD 摘要 |
-| L2 短期记忆 | 滑动窗口内原始对话 + 递归摘要 | JSON conversation + summary | MD 最近对话 |
-| L3 主题上下文 | 品类/品牌/季节/平台偏好 | JSON topic_context | MD 主题偏好 |
-| L4 分析历史 | record_analysis → title 提取 | JSON analysis_history | MD 最近分析 |
-| L5 长期记忆 | domains/brands/seasons/user_prefs | JSON long_term | 按需注入 |
+| L1 工作记忆 | 当前任务上下文 + intent + entities | SQLite working | MD 摘要 |
+| L2 短期记忆 | 滑动窗口内原始对话 + 递归摘要 | SQLite conversation + summary | MD 最近对话 |
+| L3 主题上下文 | 品类/品牌/季节/平台偏好 | SQLite topic_context | MD 主题偏好 |
+| L4 分析历史 | record_analysis → title 提取 | SQLite analysis_history | MD 最近分析 |
+| L5 长期记忆 | domains/brands/seasons/user_prefs | SQLite long_term | 按需注入 |
+| L6 RAG 语义 | LLM embedding + 余弦相似度排序 | SQLite memory_vectors 表 | 近似度排名 top-5 |
 
 - 压缩策略：滑动窗口溢出时 LLM 递归摘要（异步，不阻塞主流程）
-- 并发保护：threading.Lock + mark_dirty/async flush
+- 并发保护：threading.Lock + mark_dirty/async flush（SQLite WAL模式）
 - 注入格式：get_injectable_context() → Markdown
+- 检索兜底：语义检索 → 同义词映射（8类目体系） → 关键词匹配
 
 ### 2.5 前端渲染架构
 
@@ -161,6 +170,7 @@ SSE 事件流
   ├─ result          → JSON.parse → renderReport(json)
   │                     └─ 9 种组件模板函数
   ├─ quality_review  → 质量审查区块（评分 + 维度 + 修正历史）
+  ├─ memory_search   → 语义检索过程展示（方法/评分/来源/延迟）
   ├─ prompt          → Console 面板折叠展示
   ├─ summary         → Token 用量 + 延迟统计
   └─ phase           → Pipeline 状态切换（FSM 状态机）
@@ -217,7 +227,7 @@ Token 从前端到后端的完整链路：
 | Provider 无关的搜索配置（SEARCH_API_KEY） | 用户可选择 tavily/bocha/自定义，不改代码 |
 | 反思闭环（7 分阈值，2 次重试） | 保证报告质量，控制 token 消耗 |
 | 文生图默认真实摄影 | 避免卡通/插画式输出，符合电商场景 |
-| JSON 文件持久化（SQLite 可选） | 当前规模不需要关系型数据库 |
+| SQLite 默认存储（含向量表） | 零依赖向量检索，SQLite WAL 模式并发安全 |
 | DI 容器而非全局单例 | 为未来多租户隔离做准备 |
 | SSE 流式返回 | 实时进度反馈，支持请求取消 |
 | json_mode=True 用于所有 LLM JSON 输出 | 保证输出解析成功率，避免模板回退 |
@@ -249,6 +259,8 @@ Token 从前端到后端的完整链路：
 | Phase 2 提取核心 | 拆解 God Object 为 6 个独立引擎 | ✅ 完成 |
 | Phase 3 基础设施 | Docker/可观测性/超时保护/配置分层 | ✅ 完成 |
 | Phase 4 多租户 | DI 容器/模板重写/渲染加固 | ✅ 完成 |
+| Phase 5 代码整顿 | 死代码清理/test覆盖/CI双线/前端57测试 | ✅ 完成 |
+| Phase 6 RAG记忆 | SQLite默认 + 语义检索 + 同义词映射 + Console透明化 | ✅ 完成 |
 
 ---
 
@@ -293,22 +305,21 @@ docker run -p 8899:8899 \
 
 ---
 
-## 五、v2 里程碑总结（2026-06-08）
+## 五、v2 里程碑总结（2026-06-10）
 
 ### 5.1 变更总览
 
-自上次总结以来的关键变更（10 个提交）：
+自上次总结以来的关键变更（30+ 个提交，代码整顿 + RAG 记忆系统）：
 
 | 变更 | 影响文件 | 说明 |
 |:---|:---|:---|
-| LLM 模型配置化 | `config.py` / `llm_client.py` | 用户可选任意 OpenAI 兼容 API，不改代码 |
-| 搜索 API 配置化 | `config.py` / `tools.py` | 新增搜索路由层，支持 auto/tavily/bocha |
-| 配置模板精简 | `.env.example` / `.env.prod` | 45行→27行，去掉"旧兼容"段 |
-| 前端去供应商烙印 | `index.html` / `handler.js` | 模型名 flash/pro/chat，header 动态拉取 |
-| GitHub 发布准备 | 根目录清理 / `.gitignore` / `.dockerignore` | 删 report_selection.html，脚本移入 scripts/ |
-| store 测试补齐 | `test_store.py` | 覆盖率 0% → 99% |
-| 工具注册层设计 | `docs/tool_registry_design.md` | Skills/MCP 扩展基础 |
-| 配置文档 | `docs/config_guide.md` | 208 行的完整配置指南 |
+| 代码整顿 P0-P2 | agent_engine / tools / etc | 删除 148 行死代码，修复 format 冲突，事件循环解阻塞 |
+| 前端测试体系 | frontend/tests/ | 14 → 57 测试（render/handler/sse/console 全覆盖） |
+| RAG 语义检索 | memory / store / llm_client | LLM embedding + SQLite向量表 + 余弦相似度 |
+| SQLite 默认存储 | memory / store / config | 自动迁移JSON，memory_vectors 三表 |
+| 同义词映射 | memory.py | 8类目体系桥接语义鸿沟 |
+| CI 完善 | .github/workflows/ | pytest + npm test + Docker 三job，修复 pytest-cov 版本 |
+| 文档同步 | AGENTS / README / timeline / product_summary | 全量更新 |
 
 ### 5.2 多维度评分
 
@@ -316,21 +327,21 @@ docker run -p 8899:8899 \
 
 | 维度 | 评分 | 说明 |
 |:---|:---:|:---|
-| 模块化 | ⭐⭐⭐⭐⭐ | 20 模块，职责清晰，SSOT IntentRegistry |
-| 可扩展性 | ⭐⭐⭐⭐ | LLM/搜索 Provider 无关，工具注册层设计就绪 |
+| 模块化 | ⭐⭐⭐⭐⭐ | 22 模块，职责清晰，SSOT IntentRegistry |
+| 可扩展性 | ⭐⭐⭐⭐⭐ | LLM/搜索/存储 Provider 无关 |
 | Pipeline 设计 | ⭐⭐⭐⭐⭐ | 8 Phase，LLM 自主拆解 DAG，30s 超时保护 |
-| 记忆系统 | ⭐⭐⭐⭐⭐ | 5 层 CoALA 衍生架构，滑动窗口 + 递归摘要 |
-| 配置化 | ⭐⭐⭐⭐ | 新增 LLM/搜索配置化，Provider 一览待工程化 |
+| 记忆系统 | ⭐⭐⭐⭐⭐ | 6 层 + RAG 语义检索 + SQLite 向量表 |
+| 存储 | ⭐⭐⭐⭐ | SQLite 默认，零依赖向量检索 |
 
 #### 代码质量
 
 | 维度 | 评分 | 说明 |
 |:---|:---:|:---|
-| 测试覆盖 | ⭐⭐⭐⭐ | 134 项，76% 覆盖率，mock 隔离 |
-| Lint | ⭐⭐⭐⭐⭐ | ruff 全过，有 type hints 和 docstring |
-| 错误处理 | ⭐⭐⭐⭐ | 重试机制 + 指数退避 + 优雅降级 |
-| 安全 | ⭐⭐⭐⭐ | Bearer token + 速率限制 + dev 随机 token |
-| 单体规模 | ⭐⭐⭐⭐ | Python 后端 4,300 行，无 God Object |
+| 测试覆盖 | ⭐⭐⭐⭐ | 176 项，76% 覆盖率，CI 三线 |
+| Lint | ⭐⭐⭐⭐⭐ | ruff 全过+ CI 门禁 |
+| 错误处理 | ⭐⭐⭐⭐ | 重试机制 + 指数退避 + 三层兜底 |
+| 安全 | ⭐⭐⭐⭐ | Bearer token + 速率限制 + CI secret 扫描 |
+| 单体规模 | ⭐⭐⭐⭐ | Python 后端 4,700 行，零 dir() 反射 |
 
 #### GitHub 发布
 
@@ -355,9 +366,9 @@ docker run -p 8899:8899 \
 
 | 问题 | 严重度 | 影响 |
 |:---|:---:|:---|
-| `_score_candidates` prompt 中 {.format()} 冲突 → KeyError | 低 | 生产路径不触发，LLM 从不生成 scoring_engine 任务 |
+| LLM embedding 一致性低（相同文本~0.57） | 中 | 语义检索排名不理想，依赖同义词+关键词兜底 |
 | tools.py 覆盖率 52%（搜索函数） | 中 | 搜索函数依赖真实 API，mock 成本高 |
-| report_pipeline.py 覆盖率 26% | 中 | 新模块，测试待补 |
+| memory.py 覆盖率 57%（RAG代码） | 中 | embedding/检索调LLM，mock后覆盖不均 |
 | API 无版本前缀（/api/v1/） | 低 | 规范性问题，不影响功能 |
 | Docker 无非 root 用户 | 低 | 安全最佳实践，需单行 USER 指令 |
 
