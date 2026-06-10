@@ -375,7 +375,8 @@ class MemorySystem:
         search_text = f"{category} {intent_type}"
         query_vec = await self.embed_text(search_text)
         if query_vec:
-            vec_results = await self.search_vectors(query_vec, top_k=5, min_score=0.3)
+            # LLM embedding 一致性约 0.5-0.6，不使用硬阈值，用排序替代
+            vec_results = await self.search_vectors(query_vec, top_k=5, min_score=0.0)
             search_info["latency_ms"] = round((time.time() - t0) * 1000)
             if vec_results:
                 search_info["method"] = "semantic"
