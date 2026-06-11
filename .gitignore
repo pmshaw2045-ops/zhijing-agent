@@ -3,6 +3,7 @@ __pycache__/
 *.pyo
 .pytest_cache/
 .env
+.env.prod
 data/memory_store.json
 data/report_cache.json
 data/eval_cache.json
@@ -19,3 +20,4 @@ htmlcov/
 !frontend/eval.html
 *.bak
 .DS_Store
+docs/zhijing-agent-工程级梳理报告.md

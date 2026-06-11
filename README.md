@@ -6,6 +6,7 @@
 <p align="center">
   <a href="https://github.com/pmshaw2045-ops/zhijing-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://github.com/pmshaw2045-ops/zhijing-agent/actions/workflows/test.yml"><img src="https://github.com/pmshaw2045-ops/zhijing-agent/workflows/Test/badge.svg" alt="CI"></a>
+  <a href="https://github.com/pmshaw2045-ops/zhijing-agent/actions/workflows/eval.yml"><img src="https://github.com/pmshaw2045-ops/zhijing-agent/workflows/Agent%20Eval/badge.svg" alt="Agent Eval"></a>
   <img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python">
   <img src="https://img.shields.io/badge/tests-233%20passed-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/coverage-76%25-yellow.svg" alt="Coverage">
