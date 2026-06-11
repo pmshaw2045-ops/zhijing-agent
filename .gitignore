@@ -5,6 +5,9 @@ __pycache__/
 .env
 data/memory_store.json
 data/report_cache.json
+data/eval_cache.json
+data/*.db
+data/*.sqlite
 *.egg-info/
 dist/
 build/
@@ -13,6 +16,6 @@ build/
 htmlcov/
 .ruff_cache/
 *.html
-data/*.db
-data/*.sqlite
+!frontend/eval.html
 *.bak
+.DS_Store

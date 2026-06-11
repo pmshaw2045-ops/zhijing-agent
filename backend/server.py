@@ -23,6 +23,19 @@ from .observability import start_request, finish_request, get_metrics
 from .logging_setup import setup_logging, set_request_context, get_trace_id
 from .config import MODEL_FLASH, MODEL_PRO
 
+# 评测引擎（延迟导入，避免环路）
+import sys as _sys
+_eval_imported = False
+async def _get_eval_engine():
+    global _eval_imported
+    if not _eval_imported:
+        _scripts_dir = str(Path(__file__).parent.parent / "scripts")
+        if _scripts_dir not in _sys.path:
+            _sys.path.insert(0, _scripts_dir)
+        _eval_imported = True
+    import eval as _eval_mod
+    return _eval_mod
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(levelname)s: %(message)s')
 logger = logging.getLogger("server")
 
@@ -215,6 +228,124 @@ async def get_conversation(session_id: str):
 async def metrics():
     """系统指标（请求量/延迟/Token用量）"""
     return get_metrics()
+
+
+# ══════════════════════════════════════════════════
+#   Eval 评测接口（后台任务 + 进度轮询）
+# ══════════════════════════════════════════════════
+
+_eval_task = None          # 当前 running 的协程
+_eval_progress = {"running": False, "completed": 0, "total": 0, "current": "",
+                  "phase": "idle", "start_time": 0}
+_eval_result_lock = asyncio.Lock()
+
+
+@app.get("/eval")
+async def eval_page():
+    """评测可视化页面"""
+    eval_path = FRONTEND_DIR / "eval.html"
+    if eval_path.exists():
+        return HTMLResponse(
+            eval_path.read_text(encoding="utf-8"),
+            headers={"Cache-Control": "no-cache"}
+        )
+    return HTMLResponse("<h2>eval.html not found</h2>", status_code=404)
+
+
+@app.post("/api/eval/run")
+async def run_eval(request: Request):
+    """启动后台评测任务（立即返回）"""
+    global _eval_task
+    body = await request.json()
+    tags = body.get("tags")
+    case_id = body.get("case_id")
+    skip_judge = body.get("skip_judge", False)
+    parallel = body.get("parallel", 3)
+
+    if _eval_progress.get("running"):
+        return JSONResponse({
+            "status": "already_running",
+            "progress": _eval_progress,
+        })
+
+    logger.info(f"🧪 评测启动（后台）: tags={tags}, case_id={case_id}")
+
+    # 更新进度状态
+    _eval_progress["running"] = True
+    _eval_progress["completed"] = 0
+    _eval_progress["total"] = 0
+    _eval_progress["current"] = ""
+    _eval_progress["phase"] = "loading"
+    _eval_progress["start_time"] = time.time()
+
+    # 清空旧缓存
+    try:
+        eval_mod = await _get_eval_engine()
+        eval_mod.clear_cache()
+        # 清空磁盘缓存
+        _cache_path = Path(__file__).parent.parent / "data" / "eval_cache.json"
+        if _cache_path.exists():
+            _cache_path.unlink()
+    except Exception:
+        pass
+
+    async def _run_eval_bg():
+        global _eval_progress
+        try:
+            eval_mod = await _get_eval_engine()
+
+            def _on_progress(completed, total, current_id):
+                _eval_progress["completed"] = completed
+                _eval_progress["total"] = total
+                _eval_progress["current"] = current_id or ""
+                _eval_progress["phase"] = "running"
+
+            result = await eval_mod.run_eval(
+                tags=tags,
+                case_id=case_id,
+                skip_llm_judge=skip_judge,
+                parallel=parallel,
+                progress_callback=_on_progress,
+            )
+            _eval_progress["phase"] = "complete"
+            _eval_progress["running"] = False
+            logger.info(f"🧪 评测完成: {result['summary'].get('pass_rate', 0)}%")
+        except Exception as e:
+            logger.error(f"🧪 评测失败: {e}", exc_info=True)
+            _eval_progress["phase"] = "error"
+            _eval_progress["running"] = False
+            _eval_progress["error"] = str(e)[:200]
+
+    _eval_task = asyncio.create_task(_run_eval_bg())
+
+    return {"status": "started", "message": "评测已启动，轮询 /api/eval/status 获取进度"}
+
+
+@app.get("/api/eval/status")
+async def eval_status():
+    """获取评测状态/进度/最新结果"""
+    progress = dict(_eval_progress)
+
+    # 加载缓存结果（如有）
+    try:
+        eval_mod = await _get_eval_engine()
+        cache = eval_mod.get_cached_results()
+        has_cache = cache["summary"] is not None
+        return {
+            "status": "ok",
+            "progress": progress,
+            "has_data": has_cache,
+            "summary": cache["summary"],
+            "cases": cache.get("cases", []),
+            "case_count": len(cache.get("cases", [])),
+        }
+    except Exception as e:
+        return {
+            "status": "ok",
+            "progress": progress,
+            "has_data": False,
+            "error": str(e)[:100],
+        }
 
 
 if __name__ == "__main__":

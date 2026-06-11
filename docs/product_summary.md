@@ -319,6 +319,7 @@ docker run -p 8899:8899 \
 | SQLite 默认存储 | memory / store / config | 自动迁移JSON，memory_vectors 三表 |
 | 同义词映射 | memory.py | 8类目体系桥接语义鸿沟 |
 | CI 完善 | .github/workflows/ | pytest + npm test + Docker 三job，修复 pytest-cov 版本 |
+| Agent评测体系 | scripts/ + frontend/eval.html | 42条私有Benchmark，规则判分+LLM-as-Judge，可视化页面，CI/CD评测工作流 |
 | 文档同步 | AGENTS / README / timeline / product_summary | 全量更新 |
 
 ### 5.2 多维度评分

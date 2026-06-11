@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>织镜 EVAL — Agent 评测面板</title>
+<style>
+:root {
+  --bg: #1a1a2e; --bg2: #16213e; --bg3: #0f3460;
+  --card: #1e2747; --border: #2a3a5c;
+  --text: #e0e0e0; --text-dim: #8899b0;
+  --accent: #e8456b; --accent2: #f0c040; --green: #4ecdc4;
+  --red: #ff6b6b; --orange: #ffa94d;
+  --font: -apple-system, 'Segoe UI', system-ui, sans-serif;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: var(--font); background: var(--bg); color: var(--text);
+  min-height: 100vh; padding: 20px;
+}
+.container { max-width: 1200px; margin: 0 auto; }
+
+/* Header */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 24px;
+}
+.header h1 { font-size: 22px; font-weight: 600; }
+.header h1 span { color: var(--accent); }
+.header .subtitle { color: var(--text-dim); font-size: 13px; margin-top: 2px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 24px; border-radius: 8px; border: none;
+  font-size: 14px; font-weight: 500; cursor: pointer;
+  transition: all 0.2s; text-decoration: none;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #d1385a; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 6px 14px; font-size: 12px; }
+
+/* Stats Grid */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px; text-align: center;
+}
+.stat-card .value { font-size: 36px; font-weight: 700; line-height: 1.2; }
+.stat-card .value.pass { color: var(--green); }
+.stat-card .value.fail { color: var(--red); }
+.stat-card .value.warn { color: var(--orange); }
+.stat-card .label { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+/* Big Pass Rate */
+.pass-rate-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 32px; text-align: center; margin-bottom: 24px;
+}
+.pass-rate-card .big-num { font-size: 64px; font-weight: 800; line-height: 1; }
+.pass-rate-card .label { font-size: 14px; color: var(--text-dim); margin-top: 8px; }
+.pass-rate-card .sub-label { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+/* Intent Breakdown */
+.section-title {
+  font-size: 16px; font-weight: 600; margin: 24px 0 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.intent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.intent-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px;
+}
+.intent-card .name { font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+.intent-card .rate-row { display: flex; align-items: center; gap: 10px; }
+.intent-card .rate-num { font-size: 20px; font-weight: 700; min-width: 48px; text-align: right; }
+.intent-card .rate-bar-wrap { flex: 1; height: 8px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+.intent-card .rate-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.intent-card .count { font-size: 11px; color: var(--text-dim); }
+
+/* Case Table */
+.case-table {
+  width: 100%; border-collapse: separate; border-spacing: 0 4px;
+  font-size: 13px;
+}
+.case-table th {
+  text-align: left; padding: 8px 12px; color: var(--text-dim);
+  font-weight: 500; font-size: 11px; text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.case-table td { padding: 10px 12px; background: var(--card); }
+.case-table tr td:first-child { border-radius: 8px 0 0 8px; }
+.case-table tr td:last-child { border-radius: 0 8px 8px 0; }
+.case-table .status-badge {
+  display: inline-block; padding: 2px 10px; border-radius: 12px;
+  font-size: 11px; font-weight: 600;
+}
+.status-pass { background: rgba(78, 205, 196, 0.15); color: var(--green); }
+.status-fail { background: rgba(255, 107, 107, 0.15); color: var(--red); }
+.case-table .detail-btn {
+  background: none; border: 1px solid var(--border); color: var(--text-dim);
+  padding: 2px 10px; border-radius: 6px; cursor: pointer; font-size: 11px;
+}
+.case-table .detail-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Detail Panel */
+.detail-panel {
+  background: var(--bg3); border-radius: 8px; padding: 16px; margin-top: 4px;
+  font-size: 12px; display: none;
+}
+.detail-panel.open { display: block; }
+.detail-panel .checks { margin-bottom: 12px; }
+.detail-panel .check-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.detail-panel .check-row .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.detail-panel .check-row .dot.green { background: var(--green); }
+.detail-panel .check-row .dot.red { background: var(--red); }
+.detail-panel .judge-scores { display: flex; gap: 12px; flex-wrap: wrap; }
+.detail-panel .judge-score { padding: 4px 10px; border-radius: 6px; background: var(--bg2); }
+
+/* Filters */
+.filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-btn {
+  padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-dim); cursor: pointer;
+  font-size: 12px; transition: all 0.2s;
+}
+.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+/* States */
+.loading {
+  text-align: center; padding: 60px 20px; color: var(--text-dim);
+}
+.loading .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.no-data { text-align: center; padding: 60px 20px; color: var(--text-dim); }
+.no-data h3 { margin-bottom: 8px; color: var(--text); }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .intent-grid { grid-template-columns: 1fr; }
+  .pass-rate-card .big-num { font-size: 48px; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <div>
+      <h1>🧪 <span>EVAL</span> Agent 评测面板</h1>
+      <div class="subtitle">织镜 AI Agent 业务回归评测 · 覆盖全部7种意图</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="lastRun" class="subtitle" style="font-size:12px"></span>
+      <button class="btn btn-primary" id="btnRunEval" onclick="runEval()">
+        ▶ 运行评测
+      </button>
+    </div>
+  </div>
+
+  <!-- 加载状态 -->
+  <div id="loadingState" class="loading" style="display:none">
+    <div class="spinner"></div>
+    <div>评测执行中...（约 3-8 分钟，取决于并行数）</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-top:8px" id="progressHint"></div>
+  </div>
+
+  <!-- 无数据状态 -->
+  <div id="noDataState" class="no-data">
+    <h3>暂无评测数据</h3>
+    <p>点击上方「运行评测」按钮开始首次评测</p>
+  </div>
+
+  <!-- 结果区域（初始隐藏） -->
+  <div id="resultArea" style="display:none">
+
+    <!-- 通过率大卡片 -->
+    <div class="pass-rate-card" id="passRateCard">
+      <div class="big-num" id="bigPassRate">--</div>
+      <div class="label">综合通过率</div>
+      <div class="sub-label" id="passDetail"></div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <!-- 分意图通过率 -->
+    <div class="section-title">📊 分意图通过率</div>
+    <div class="intent-grid" id="intentGrid"></div>
+
+    <!-- 过滤 + 用例详情 -->
+    <div class="section-title" style="margin-top:8px">
+      📋 用例详情
+      <span style="font-size:12px;color:var(--text-dim);font-weight:400" id="caseCountLabel"></span>
+    </div>
+    <div class="filters" id="filterBar"></div>
+    <table class="case-table" id="caseTable">
+      <thead>
+        <tr><th>状态</th><th>ID</th><th>查询</th><th>预期意图</th><th>实际意图</th><th>规则通过率</th><th>耗时</th><th></th></tr>
+      </thead>
+      <tbody id="caseBody"></tbody>
+    </table>
+  </div>
+
+</div>
+<script>
+// ── 状态 ──
+var allCases = [];
+var allSummary = null;
+var currentFilter = 'all';
+
+// ── 主入口 ──
+document.addEventListener('DOMContentLoaded', function() {
+  loadStatus();
+});
+
+function getApiBase() {
+  return window.location.origin;
+}
+
+async function loadStatus() {
+  try {
+    var resp = await fetch(getApiBase() + '/api/eval/status?' + Date.now());
+    var data = await resp.json();
+    if (data.status === 'ok' && data.cases && data.cases.length > 0) {
+      renderResults(data.summary, data.cases);
+      return;
+    }
+    if (data.has_data && data.summary) {
+      renderResults(data.summary, []);
+    }
+  } catch(e) {
+    console.warn('Load status failed:', e);
+  }
+}
+
+// ── 运行评测（后台任务 + 轮询） ──
+var isRunning = false;
+var _pollTimer = null;
+
+async function runEval() {
+  if (isRunning) return;
+  isRunning = true;
+  var btn = document.getElementById('btnRunEval');
+  btn.disabled = true;
+  btn.textContent = '⏳ 启动中...';
+  document.getElementById('noDataState').style.display = 'none';
+  document.getElementById('resultArea').style.display = 'none';
+  document.getElementById('loadingState').style.display = 'block';
+
+  try {
+    var resp = await fetch(getApiBase() + '/api/eval/run', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({skip_judge: false, parallel: 3})
+    });
+    var data = await resp.json();
+
+    if (data.status === 'started' || data.status === 'already_running') {
+      document.getElementById('progressHint').textContent = '评测已启动，正在轮询进度...';
+      // 开始轮询进度
+      pollProgress();
+    } else {
+      document.getElementById('loadingState').style.display = 'none';
+      alert('启动失败: ' + JSON.stringify(data));
+      resetRunBtn();
+    }
+  } catch(e) {
+    document.getElementById('loadingState').style.display = 'none';
+    alert('请求失败: ' + e.message);
+    resetRunBtn();
+  }
+}
+
+function pollProgress() {
+  if (_pollTimer) clearTimeout(_pollTimer);
+
+  fetch(getApiBase() + '/api/eval/status?' + Date.now())
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var progress = data.progress || {};
+      var phase = progress.phase || 'idle';
+      var completed = progress.completed || 0;
+      var total = progress.total || 0;
+      var current = progress.current || '';
+
+      if (phase === 'loading') {
+        document.getElementById('progressHint').textContent = '正在加载评测数据集...';
+        _pollTimer = setTimeout(pollProgress, 1000);
+        return;
+      }
+
+      if (phase === 'running' && total > 0) {
+        var pct = Math.round(completed / total * 100);
+        document.getElementById('loadingState').querySelector('div:nth-child(2)').textContent =
+          '评测执行中... ' + pct + '% (' + completed + '/' + total + ')';
+        document.getElementById('progressHint').textContent =
+          '当前: ' + (current || '准备中...');
+        _pollTimer = setTimeout(pollProgress, 3000);
+        return;
+      }
+
+      if (phase === 'complete') {
+        document.getElementById('loadingState').style.display = 'none';
+        // 读取完整结果
+        if (data.has_data && data.cases && data.cases.length > 0) {
+          renderResults(data.summary, data.cases);
+        } else {
+          // 可能还在写入缓存，等一秒再读
+          _pollTimer = setTimeout(loadFinalResults, 1000);
+        }
+        resetRunBtn();
+        return;
+      }
+
+      if (phase === 'error') {
+        document.getElementById('loadingState').style.display = 'none';
+        alert('评测出错: ' + (progress.error || '未知错误'));
+        resetRunBtn();
+        return;
+      }
+
+      // idle — 可能还没开始
+      _pollTimer = setTimeout(pollProgress, 1000);
+    })
+    .catch(function(e) {
+      console.warn('Poll failed:', e);
+      _pollTimer = setTimeout(pollProgress, 2000);
+    });
+}
+
+function loadFinalResults() {
+  fetch(getApiBase() + '/api/eval/status?' + Date.now())
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.has_data && data.cases && data.cases.length > 0) {
+        renderResults(data.summary, data.cases);
+      } else {
+        document.getElementById('noDataState').style.display = 'block';
+      }
+    })
+    .catch(function(e) {
+      document.getElementById('noDataState').style.display = 'block';
+    });
+}
+
+function resetRunBtn() {
+  isRunning = false;
+  var btn = document.getElementById('btnRunEval');
+  btn.disabled = false;
+  btn.textContent = '▶ 运行评测';
+}
+
+// ── 渲染结果 ──
+function renderResults(summary, cases) {
+  allSummary = summary;
+  allCases = cases;
+  document.getElementById('noDataState').style.display = 'none';
+  document.getElementById('resultArea').style.display = 'block';
+
+  // 最后运行时间
+  document.getElementById('lastRun').textContent = '上次: ' + (summary.eval_time || '--');
+
+  // 通过率大卡片
+  var pr = summary.pass_rate || 0;
+  var bigEl = document.getElementById('bigPassRate');
+  bigEl.textContent = pr + '%';
+  bigEl.style.color = pr >= 80 ? 'var(--green)' : pr >= 50 ? 'var(--orange)' : 'var(--red)';
+  document.getElementById('passDetail').textContent =
+    '通过 ' + (summary.passed || 0) + ' / 共 ' + (summary.total_cases || 0) + ' 条用例';
+
+  // 统计卡片
+  var statsHtml = '';
+  var stats = [
+    {v: summary.total_cases || 0, l: '总用例数'},
+    {v: summary.passed || 0, l: '通过', cls: summary.pass_rate >= 70 ? 'pass' : 'fail'},
+    {v: summary.failed || 0, l: '失败', cls: summary.failed > 0 ? 'fail' : 'pass'},
+    {v: (summary.avg_execution_time_ms || 0) + 'ms', l: '平均耗时'},
+  ];
+  stats.forEach(function(s) {
+    statsHtml += '<div class="stat-card"><div class="value ' + (s.cls||'') + '">' + s.v + '</div><div class="label">' + s.l + '</div></div>';
+  });
+  document.getElementById('statsGrid').innerHTML = statsHtml;
+
+  // 分意图
+  var intentHtml = '';
+  var intentStats = summary.intent_stats || {};
+  var intentOrder = ['单品选品分析','多品牌竞品对标','品类趋势洞察','商品文案生成','定价策略分析','上新排期优化','文生图','无法识别','模糊查询','长文本混合','多任务混杂','模糊短查询','追问','离域查询','注入攻击','隐私保护','拼写容错','空输入'];
+  intentOrder.forEach(function(name) {
+    var s = intentStats[name];
+    if (!s) return;
+    var rate = Math.round(s.passed / s.total * 100);
+    var color = rate >= 80 ? 'var(--green)' : rate >= 50 ? 'var(--orange)' : 'var(--red)';
+    intentHtml += '<div class="intent-card"><div class="name">' + name + '</div><div class="rate-row">' +
+      '<span class="rate-num" style="color:' + color + '">' + rate + '%</span>' +
+      '<div class="rate-bar-wrap"><div class="rate-bar" style="width:' + rate + '%;background:' + color + '"></div></div>' +
+      '<span class="count">' + s.passed + '/' + s.total + '</span></div></div>';
+  });
+  document.getElementById('intentGrid').innerHTML = intentHtml;
+
+  // 用例详情
+  renderCaseDetails(cases);
+}
+
+// ── 用例详情渲染 ──
+function renderCaseDetails(cases) {
+  document.getElementById('caseCountLabel').textContent = '(' + cases.length + ' 条)';
+
+  // 过滤栏
+  var filters = [
+    {key:'all', label:'全部'},
+    {key:'pass', label:'✅ 通过'},
+    {key:'fail', label:'❌ 失败'},
+  ];
+  var seenCategories = {};
+  cases.forEach(function(c) { if (c.category) seenCategories[c.category] = true; });
+  Object.keys(seenCategories).forEach(function(cat) {
+    filters.push({key:'cat:' + cat, label: cat});
+  });
+  var filterHtml = '';
+  filters.forEach(function(f) {
+    var active = f.key === currentFilter ? ' active' : '';
+    filterHtml += '<button class="filter-btn' + active + '" onclick="setFilter(\'' + f.key + '\')">' + f.label + '</button>';
+  });
+  document.getElementById('filterBar').innerHTML = filterHtml;
+
+  // 表格行
+  var bodyHtml = '';
+  var filtered = cases;
+  if (currentFilter === 'pass') filtered = cases.filter(function(c) { return c.passed; });
+  else if (currentFilter === 'fail') filtered = cases.filter(function(c) { return !c.passed; });
+  else if (currentFilter.startsWith('cat:')) {
+    var cat = currentFilter.slice(4);
+    filtered = cases.filter(function(c) { return c.category === cat; });
+  }
+
+  filtered.forEach(function(c) {
+    var status = c.passed ? '✅' : '❌';
+    var statusClass = c.passed ? 'status-pass' : 'status-fail';
+    var ruleRate = c.rule_pass_rate || 0;
+    var intentDisplay = c.intent_type || '--';
+    var detailId = 'detail-' + (c.id || Math.random().toString(36).slice(2));
+    bodyHtml += '<tr>' +
+      '<td><span class="status-badge ' + statusClass + '">' + status + '</span></td>' +
+      '<td style="font-family:monospace;font-size:11px">' + (c.id||'--') + '</td>' +
+      '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.query||'') + '</td>' +
+      '<td>' + esc(c.expected_intent||'') + '</td>' +
+      '<td>' + esc(intentDisplay) + '</td>' +
+      '<td>' + ruleRate + '%</td>' +
+      '<td>' + (c.execution_time_ms ? Math.round(c.execution_time_ms/1000) + 's' : '--') + '</td>' +
+      '<td><button class="detail-btn" onclick="toggleDetail(\'' + detailId + '\')">展开</button></td></tr>';
+
+    // 详情行
+    bodyHtml += '<tr id="' + detailId + '" style="display:none"><td colspan="8"><div class="detail-panel open">';
+    // Checks
+    if (c.checks && c.checks.length) {
+      bodyHtml += '<div class="checks">';
+      c.checks.forEach(function(ch) {
+        var dot = ch.passed ? 'green' : 'red';
+        bodyHtml += '<div class="check-row"><span class="dot ' + dot + '"></span> ' + esc(ch.check) + ' — ' + esc(ch.detail||'') + '</div>';
+      });
+      bodyHtml += '</div>';
+    }
+    // Judge scores
+    if (c.judge && c.judge.scores) {
+      bodyHtml += '<div class="judge-scores">';
+      var scoreMap = c.judge.scores;
+      Object.keys(scoreMap).forEach(function(k) {
+        bodyHtml += '<span class="judge-score"><strong>' + k + ':</strong> ' + scoreMap[k] + '</span>';
+      });
+      if (c.judge.overall !== undefined) {
+        bodyHtml += '<span class="judge-score" style="background:var(--accent);color:#fff"><strong>总体:</strong> ' + c.judge.overall + '</span>';
+      }
+      if (c.judge.verdict) {
+        bodyHtml += '<div style="margin-top:8px;color:var(--text-dim)">' + esc(c.judge.verdict) + '</div>';
+      }
+      if (c.judge.issues && c.judge.issues.length) {
+        bodyHtml += '<div style="margin-top:4px;color:var(--red);font-size:11px">⚠️ ' + c.judge.issues.join('; ') + '</div>';
+      }
+      bodyHtml += '</div>';
+    }
+    if (c.error_message) {
+      bodyHtml += '<div style="color:var(--red);margin-top:4px">❌ ' + esc(c.error_message) + '</div>';
+    }
+    bodyHtml += '</div></td></tr>';
+  });
+  document.getElementById('caseBody').innerHTML = bodyHtml;
+}
+
+function setFilter(key) {
+  currentFilter = key;
+  renderCaseDetails(allCases);
+}
+
+function toggleDetail(id) {
+  var row = document.getElementById(id);
+  if (!row) return;
+  var display = row.style.display;
+  row.style.display = display === 'none' || display === '' ? 'table-row' : 'none';
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>

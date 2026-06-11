@@ -314,6 +314,14 @@ document.querySelectorAll('.console-tab').forEach(function(tab) {
       return;
     }
 
+    // ── EVAL: 显示评测面板 ──
+    var ep = document.getElementById('evalPanel');
+    if (active === 'eval') {
+      pc.style.display = 'none'; mp.style.display = 'none'; ep.style.display = '';
+      buildEvalPanel(ep);
+      return;
+    }
+
     // ── 其他 tab: 显示管道，隐藏面板 ──
     mp.style.display = 'none'; pc.style.display = '';
 
@@ -564,4 +572,141 @@ function downloadPDF(bubbleEl) {
   if (!win) { alert('弹窗被拦截'); return; }
   win.document.write(html);
   win.document.close();
+}
+
+// ══════════════════════════════════════════════════
+//   EVAL 评测面板
+// ══════════════════════════════════════════════════
+
+function buildEvalPanel(panel) {
+  panel.innerHTML = '<div class="console-line"><span class="ts">'+ts()+'</span><span class="text dim">加载评测状态...</span></div>';
+
+  fetch(API_BASE + '/api/eval/status')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.has_data && data.summary) {
+        renderEvalSummary(panel, data.summary);
+      } else {
+        renderEvalEmpty(panel);
+      }
+    })
+    .catch(function(e) {
+      panel.innerHTML = '<div class="console-line"><span class="ts">'+ts()+'</span><span class="text" style="color:#c06050">获取评测状态失败: ' + e.message + '</span></div>';
+    });
+}
+
+function renderEvalSummary(panel, summary) {
+  var pr = summary.pass_rate || 0;
+  var color = pr >= 80 ? '#4ecdc4' : pr >= 50 ? '#ffa94d' : '#ff6b6b';
+  var html = '';
+
+  // 标题行
+  html += '<div class="console-line" style="padding:8px 0"><span class="ts">'+ts()+'</span>' +
+    '<span class="tag tag-info">EVAL</span>' +
+    '<span class="text"><strong>Agent 评测报告</strong> — 上次运行: ' + (summary.eval_time || '--') + '</span></div>';
+
+  // 通过率
+  html += '<div class="console-line" style="padding:12px 0;text-align:center">' +
+    '<span style="font-size:42px;font-weight:800;color:' + color + '">' + pr + '%</span>' +
+    '<span style="color:var(--text-light);font-size:13px;display:block">综合通过率 (' + (summary.passed||0) + '/' + (summary.total_cases||0) + ')</span></div>';
+
+  // 分意图通过率
+  var intentStats = summary.intent_stats || {};
+  var iCount = 0;
+  for (var name in intentStats) {
+    iCount++;
+    var s = intentStats[name];
+    var rate = Math.round(s.passed / s.total * 100);
+    var c = rate >= 80 ? '#4ecdc4' : rate >= 50 ? '#ffa94d' : '#ff6b6b';
+    var barWidth = Math.max(rate, 4);
+    html += '<div class="console-line" style="padding:3px 0"><span class="ts">'+ts()+'</span>' +
+      '<span class="tag tag-model">' + name.slice(0,6) + '</span>' +
+      '<span class="text" style="display:flex;align-items:center;gap:8px;width:100%">' +
+      '<span style="min-width:28px;font-weight:600;color:' + c + ';font-size:13px">' + rate + '%</span>' +
+      '<span style="flex:1;height:6px;background:#2a3a5c;border-radius:3px;overflow:hidden">' +
+      '<span style="display:block;height:100%;width:' + barWidth + '%;background:' + c + ';border-radius:3px"></span></span>' +
+      '<span style="font-size:11px;color:var(--text-light)">' + s.passed + '/' + s.total + '</span></span></div>';
+  }
+
+  // 操作按钮
+  html += '<div class="console-line" style="padding:12px 0 4px;text-align:center">' +
+    '<button onclick="runEvalFromConsole()" style="background:#e8456b;color:#fff;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500">▶ 运行评测</button>' +
+    ' <a href="/eval" target="_blank" style="color:#e8456b;font-size:12px;margin-left:8px">查看完整报告 →</a></div>';
+
+  panel.innerHTML = html;
+}
+
+function renderEvalEmpty(panel) {
+  panel.innerHTML =
+    '<div class="console-line"><span class="ts">'+ts()+'</span><span class="tag tag-info">EVAL</span><span class="text dim">暂无评测数据</span></div>' +
+    '<div class="console-line" style="padding:12px 0;text-align:center;color:var(--text-light)">' +
+    '<span style="font-size:32px;display:block;margin-bottom:8px">🧪</span>' +
+    '<span>首次评测大约需要 3-8 分钟</span><br>' +
+    '<button onclick="runEvalFromConsole()" style="margin-top:12px;background:#e8456b;color:#fff;border:none;padding:8px 24px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500">▶ 首次运行评测</button></div>';
+}
+
+var _evalRunning = false;
+function runEvalFromConsole() {
+  if (_evalRunning) return;
+  _evalRunning = true;
+  var panel = document.getElementById('evalPanel');
+  if (!panel) return;
+  panel.innerHTML = '<div class="console-line"><span class="ts">'+ts()+'</span><span class="tag tag-info">EVAL</span><span class="text">正在启动评测...</span></div>';
+
+  fetch(API_BASE + '/api/eval/run', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({skip_judge: false, parallel: 3})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.status === 'started' || data.status === 'already_running') {
+      panel.innerHTML = '<div class="console-line"><span class="ts">'+ts()+'</span><span class="tag tag-info">EVAL</span><span class="text">评测运行中... <span id="evalProgress" style="color:var(--accent)">0%</span></span></div>';
+      pollEvalProgress(panel);
+    } else {
+      panel.innerHTML += '<div class="console-line"><span class="ts">'+ts()+'</span><span class="text" style="color:#c06050">启动失败</span></div>';
+      _evalRunning = false;
+    }
+  })
+  .catch(function(e) {
+    panel.innerHTML += '<div class="console-line"><span class="ts">'+ts()+'</span><span class="text" style="color:#c06050">请求失败: ' + e.message + '</span></div>';
+    _evalRunning = false;
+  });
+}
+
+function pollEvalProgress(panel) {
+  setTimeout(function() {
+    fetch(API_BASE + '/api/eval/status?' + Date.now())
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var p = data.progress || {};
+        var phase = p.phase || 'idle';
+        var completed = p.completed || 0;
+        var total = p.total || 0;
+        var current = p.current || '';
+
+        if (phase === 'running' || phase === 'loading') {
+          var pct = total > 0 ? Math.round(completed/total*100) + '%' : '...';
+          var progEl = document.getElementById('evalProgress');
+          if (progEl) progEl.textContent = pct + ' (' + completed + '/' + total + ') ' + current;
+          // 继续轮询
+          pollEvalProgress(panel);
+        } else if (phase === 'complete') {
+          // 评测完成，加载最终结果
+          buildEvalPanel(panel);
+          _evalRunning = false;
+        } else if (phase === 'error') {
+          panel.innerHTML += '<div class="console-line"><span class="ts">'+ts()+'</span><span class="text" style="color:#c06050">评测失败: ' + (p.error||'') + '</span></div>';
+          _evalRunning = false;
+        } else {
+          // idle / 未知
+          pollEvalProgress(panel);
+        }
+      })
+      .catch(function(e) {
+        if (panel.querySelector('.tag-info')) {
+          pollEvalProgress(panel); // 继续轮询
+        }
+      });
+  }, 2000);
 }

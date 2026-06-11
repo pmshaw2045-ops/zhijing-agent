@@ -1,0 +1,76 @@
+name: Agent Eval
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install -e .
+
+      - name: Start server
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          SEARCH_API_KEY: ${{ secrets.SEARCH_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          BOCHA_API_KEY: ${{ secrets.BOCHA_API_KEY }}
+          APP_ENV: ci
+        run: |
+          uvicorn backend.server:app --host 0.0.0.0 --port 8899 &
+          # 等待服务就绪（最多 20 秒）
+          for i in $(seq 1 10); do
+            if curl -s http://localhost:8899/api/health > /dev/null 2>&1; then
+              echo "✓ Server ready"
+              break
+            fi
+            echo "  Waiting... ($i)"
+            sleep 2
+          done
+
+      - name: Run Agent evaluation
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          EVAL_API_BASE: http://localhost:8899
+          EVAL_API_TIMEOUT: 120
+          EVAL_PARALLEL: 3
+        run: |
+          python3 scripts/eval.py \
+            --tags core edge \
+            --skip-judge \
+            --parallel 3 \
+            --min-pass-rate 70 \
+            2>&1 | tee /tmp/eval-out.txt
+
+      - name: Generate eval summary
+        if: always()
+        run: |
+          python3 scripts/ci_eval_summary.py 2>&1 | tee /tmp/eval-summary.txt
+
+      - name: Upload eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: |
+            data/eval_cache.json
+            /tmp/eval-out.txt
+            /tmp/eval-summary.txt

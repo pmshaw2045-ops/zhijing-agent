@@ -161,13 +161,17 @@ FastAPI Server (backend/server.py)
 │       ├── executor.py     95行  ParallelExecutor
 │       ├── registry.py     83行  ToolRegistry
 │       └── dag_loader.py   63行  DAG模板加载
+├── scripts/               ← [新增] 评测工具集
+│   ├── eval.py            784行  Agent评测引擎（规则判分+LLM-as-Judge+后台任务+阈值退出）
+│   └── ci_eval_summary.py  55行  CI报告摘要生成器
 ├── frontend/
-│   ├── index.html         109行 HTML骨架+全局state
+│   ├── index.html         110行 HTML骨架+全局state+EVAL Tab
+│   ├── eval.html          450行  [新增] 独立评测可视化页面
 │   ├── style.css          264行 CSS设计系统
 │   ├── render.js           68行 报告渲染引擎(R.* + renderReport)
-│   ├── console.js          25行 Console日志(clog/clearConsole)
+│   ├── console.js          26行 Console日志+EVAL Tab过滤
 │   ├── sse.js             150行 SSE流式+重试+sendMessage
-│   ├── handler.js         554行 SSE事件处理+layout修复
+│   ├── handler.js         680行 SSE事件处理+PDF下载+EVAL面板+进度轮询
 │   └── tests/             5个测试文件 / 57 passed
 ├── tests/                 12个测试文件 / 176 passed
 │   ├── test_agent_engine.py  19 Pipeline流程
@@ -184,10 +188,13 @@ FastAPI Server (backend/server.py)
 │   ├── test_store.py         16 SQLite后端
 │   └── test_tools.py         23 LLM驱动工具
 ├── .github/workflows/
-│   └── test.yml           CI: pytest + npm test（双作业并行）
+│   ├── test.yml           CI: pytest + npm test（双作业并行）
+│   └── eval.yml           [新增] CI: Agent行为评测（core+edge，≥70%通过率）
 └── data/
     ├── memory_store.json  持久化记忆
-    └── report_cache.json  24h报告缓存
+    ├── report_cache.json  24h报告缓存
+    ├── eval_dataset.json  [新增] 42条Agent评测用例（7意图+边界/安全）
+    └── eval_cache.json    [新增] 评测结果缓存
 ```
 
 ## API 设计
@@ -232,3 +239,6 @@ data: {"type":"done"}
 10. ✅ JSON Schema前端渲染，根除类名幻觉
 11. ✅ 前置校验entity驱动+user_input兜底
 12. ✅ 233项自动化测试（176后端 + 57前端） + GitHub Actions CI（pytest + npm test + Docker）
+13. ✅ **Agent评测体系 Phase 1** — 42条私有Benchmark评测集（7意图+边界/安全/容错），
+    规则判分引擎 + LLM-as-Judge（织镜定制5维度），独立评测页面 `/eval` + Console EVAL Tab，
+    CI/CD评测工作流（core+edge，阈值≥70%，阻断合并），后台任务+进度轮询

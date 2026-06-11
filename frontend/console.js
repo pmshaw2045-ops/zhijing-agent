@@ -12,6 +12,7 @@ function filterByTab(tag, tab) {
   if (tab === 'pipeline') return ['', 'model', 'intent', 'precheck', 'decompose', 'dag', 'tool', 'execute', 'success', 'error', 'reflect', 'info'].includes(tag);
   if (tab === 'state') return tag === 'state';
   if (tab === 'memory') return tag === 'memory';
+  if (tab === 'eval') return tag === 'eval';
   return true;
 }
 function clogSection(title, content) {

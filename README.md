@@ -104,12 +104,16 @@ zhijing-agent/
 │   ├── console.js         Console 日志
 │   └── tests/             5 文件 / 57 项测试
 ├── tests/                 12 文件 / 170 项测试
-├── docs/                  13 文档
+├── scripts/               Agent 评测工具集
+│   ├── eval.py            评测引擎（规则判分 + LLM-as-Judge）
+│   └── ci_eval_summary.py CI 报告摘要
+├── docs/                  14 文档
 │   ├── product_summary.md    产品与技术总结
+│   ├── agent_evaluation_framework.md  Agent评测体系评估
 │   ├── production_readiness.md  生产就绪度评估
 │   ├── config_guide.md        配置指南
 │   └── archive/              历史存档
-└── .github/workflows/     CI (pytest + ruff)
+└── .github/workflows/     CI (pytest + ruff + eval)
 ```
 
 ***
@@ -124,9 +128,37 @@ zhijing-agent/
 | `GET /api/metrics`                  | Token 用量 / 请求统计      |
 | `GET /api/memory/{id}`              | 会话记忆状态               |
 | `GET /api/memory/{id}/conversation` | 会话历史                 |
+| `GET /api/eval/status`              | 评测状态 / 进度 / 最新结果    |
+| `POST /api/eval/run`                | 启动后台评测任务            |
+| `GET /eval`                         | 评测可视化页面              |
 | `GET /docs`                         | OpenAPI / Swagger 文档 |
 
 详见 [AGENTS.md](AGENTS.md) 或直接访问 `http://localhost:8899/docs`。
+
+***
+
+## Agent 评测
+
+织镜内置 Agent 行为评测体系，基于 42 条私有 Benchmark 用例（覆盖全部 7 种意图 + 边界安全场景），对每次迭代进行回归验证。
+
+**评测入口**：
+- 浏览器打开 [`/eval`](http://localhost:8899/eval) — 完整可视化评测面板
+- 右侧 Console 面板 → **EVAL Tab** — 快速查看摘要 + 触发评测
+
+**CLI 触发**：
+```bash
+# 跑核心用例（约25条，~6分钟）
+python3 scripts/eval.py --tags core edge --skip-judge --parallel 3
+
+# 单条验证
+python3 scripts/eval.py --id selection-01 --skip-judge
+
+# CI 模式（低于70%通过率 exit code 1）
+python3 scripts/eval.py --tags core --skip-judge --min-pass-rate 70
+```
+
+**CI/CD**：每次 push/PR 自动跑评测，通过率低于 70% 阻断合并。
+详见 [agent_evaluation_framework.md](docs/agent_evaluation_framework.md)。
 
 ***
 
