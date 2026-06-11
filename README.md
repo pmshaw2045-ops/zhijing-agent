@@ -69,6 +69,7 @@ make test-integration
 ![alt text](docs/screenshots/image.png)
 ![alt text](docs/screenshots/image-1.png)
 ![alt text](docs/screenshots/image-2.png)
+![alt text](docs/screenshots/image-eval.png)
 
 ***
 
