@@ -112,7 +112,8 @@ class AgentEngine:
         self.decompose_engine = DecomposeEngine(self.dag_loader)
 
     async def run_pipeline(self, user_input: str, session_id: str, mode: str = "selection",
-                           clarify_answer: str = None) -> AsyncGenerator[dict, None]:
+                           clarify_answer: str = None,
+                           template_id: str = None) -> AsyncGenerator[dict, None]:
 
         if clarify_answer and self._pending_clarify:
             user_input = f"{user_input}。补充说明: {clarify_answer}"
@@ -307,10 +308,10 @@ class AgentEngine:
                 lines.append(f"- [{ts}] {h.get('query', '')[:40]}：{h.get('key_findings', '')[:120]}")
             history_context = "\n\n【历史分析参考】\n您此前对相关主题做过分析：\n" + "\n".join(lines) + "\n\n请参考以上历史结论，补充趋势变化和新发现。"
         yield {"type": "phase", "phase": "report", "status": "running", "model": MODEL_CHAT}
-        p_report = self.report_builder.build_prompt(intent, detected_mode, exec_results, session_id)
+        p_report = self.report_builder.build_prompt(intent, detected_mode, exec_results, session_id, template_id=template_id)
         p_report += history_context
         yield {"type": "prompt", "phase": "report", "model": MODEL_CHAT, "prompt": p_report, "label": "Phase 6: 报告生成"}
-        report = await self.report_builder.generate(intent, detected_mode, exec_results, session_id, prompt=p_report)
+        report = await self.report_builder.generate(intent, detected_mode, exec_results, session_id, prompt=p_report, template_id=template_id)
         yield {"type": "phase", "phase": "report", "status": "done", "data": {"generated": True, "length": len(report)}}
 
         # ====== Phase 7: 反思修正 (CostRouter控制) ======
@@ -346,11 +347,12 @@ class AgentEngine:
                 instructions = build_improvement_prompt(scores, fixes, target=TARGET_SCORE)
                 instructions += f"\n\n这是第{attempt}次修正。如果仍然不达标将再次重试。请认真对待每一条修复指令。"
 
-                p_retry_rpt = self.report_builder.build_prompt(intent, detected_mode, exec_results, session_id, instructions)
+                p_retry_rpt = self.report_builder.build_prompt(intent, detected_mode, exec_results, session_id, instructions, template_id=template_id)
                 yield {"type": "prompt", "phase": "retry_report", "model": MODEL_CHAT, "prompt": p_retry_rpt, "label": f"Phase 7b: 第{attempt}次修正报告"}
                 retry_report = await self.report_builder.generate(
                     intent, detected_mode, exec_results, session_id,
-                    improvement_instructions=instructions, max_tokens=4096, prompt=p_retry_rpt
+                    improvement_instructions=instructions, max_tokens=4096, prompt=p_retry_rpt,
+                    template_id=template_id
                 )
                 report_versions.append(retry_report)
 

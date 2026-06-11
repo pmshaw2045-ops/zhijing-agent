@@ -56,6 +56,12 @@
           <button class="quick-btn">✍️ 生成法式茶歇裙文案</button>
           <button class="quick-btn">🎨 生成服饰设计图</button>
         </div>
+        <div class="template-selector">
+          <span class="template-label">报告模板</span>
+          <select id="templateSelect" onchange="onTemplateChange(this)">
+            <option value="">加载中...</option>
+          </select>
+        </div>
       </div>
     </div>
     <div class="console-panel">
@@ -90,6 +96,7 @@ const headerTitle = document.getElementById('headerTitle');
 let sessionId = 'sess_' + Math.random().toString(36).substring(2, 10);
 let currentMode = 'selection';
 let isProcessing = false;
+let selectedTemplate = null;
 
 document.getElementById('sidDisplay').textContent = sessionId;
 
@@ -101,6 +108,45 @@ fetch('/api/health').then(function(r){return r.json();}).then(function(d){
 }).catch(function(){
   // 静默兜底，保留默认文本 "LLM"
 });
+
+// 加载可用报告模板列表
+var templateSelect = document.getElementById('templateSelect');
+fetch('/api/templates').then(function(r){return r.json();}).then(function(d){
+  if (d.templates && d.templates.length) {
+    templateSelect.innerHTML = '';
+    // 按意图分组
+    var groups = {};
+    d.templates.forEach(function(t){
+      if (!groups[t.intent]) groups[t.intent] = [];
+      groups[t.intent].push(t);
+    });
+    var intentNames = {'selection':'选品分析','competitive':'竞品对标','trend':'趋势洞察',
+                       'copy':'文案生成','pricing':'定价策略','launch':'上新排期'};
+    var firstOpt = document.createElement('option');
+    firstOpt.value = '';
+    firstOpt.textContent = '标准版（自动）';
+    templateSelect.appendChild(firstOpt);
+    Object.keys(groups).forEach(function(intent){
+      var items = groups[intent];
+      if (items.length <= 1) return;  // 只有标准版的意图不显示分组
+      var optgroup = document.createElement('optgroup');
+      optgroup.label = intentNames[intent] || intent;
+      items.forEach(function(t){
+        var opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.name + ' — ' + t.description;
+        optgroup.appendChild(opt);
+      });
+      templateSelect.appendChild(optgroup);
+    });
+  }
+}).catch(function(){
+  templateSelect.innerHTML = '<option value="">模板不可用</option>';
+});
+
+function onTemplateChange(sel) {
+  selectedTemplate = sel.value || null;
+}
 </script>
 
 <script src="/console.js"></script>

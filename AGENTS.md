@@ -140,7 +140,7 @@ FastAPI Server (backend/server.py)
 │   ├── agent_engine.py    506行  Agent Pipeline
 │   ├── memory.py          590行  六层记忆系统 + RAG语义检索
 │   ├── tools.py           444行  8个工具实现
-│   ├── report.py          255行  JSON报告生成器
+│   ├── report.py          148行  JSON报告生成器（模板路由）
 │   ├── intent_registry.py 233行  意图元数据中心
 │   ├── config.py          170行  配置管理
 │   ├── llm_client.py      194行  LLM客户端
@@ -151,8 +151,9 @@ FastAPI Server (backend/server.py)
 │   ├── decompose_engine.py 103行 DAG自主拆解
 │   ├── store.py           186行  SQLite存储后端（向量表+CRUD）
 │   ├── auth.py            114行  认证+限流
-│   ├── reflect.py          57行  反思引擎
+│   ├── reflect.py          56行  反思引擎
 │   ├── report_pipeline.py  64行  报告管道辅助函数
+│   ├── templates.py       270行  报告模板注册表（10个模板/6意图）
 │   ├── startup_diag.py    232行  启动自检
 │   ├── logging_setup.py    73行  日志配置
 │   └── harness/           416行  管道基础设施

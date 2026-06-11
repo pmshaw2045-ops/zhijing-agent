@@ -149,6 +149,7 @@ async def chat(request: Request):
     session_id = body.get("session_id", str(uuid.uuid4())[:8])
     mode = body.get("mode", "selection")
     clarify_answer = body.get("clarify_answer", None)
+    template_id = body.get("template", None)
 
     if not message:
         return JSONResponse({"error": "message is required"}, status_code=400)
@@ -161,7 +162,7 @@ async def chat(request: Request):
     async def generate():
         cancelled = False
         try:
-            async for event in engine.run_pipeline(message, session_id, mode, clarify_answer):
+            async for event in engine.run_pipeline(message, session_id, mode, clarify_answer, template_id=template_id):
                 if await request.is_disconnected():
                     logger.info(f"[{session_id}] 客户端已断开，取消Pipeline")
                     cancelled = True
@@ -238,6 +239,13 @@ _eval_task = None          # 当前 running 的协程
 _eval_progress = {"running": False, "completed": 0, "total": 0, "current": "",
                   "phase": "idle", "start_time": 0}
 _eval_result_lock = asyncio.Lock()
+
+
+@app.get("/api/templates")
+async def list_templates():
+    """返回所有可用报告模板"""
+    from . import templates as _tpl_mod
+    return {"templates": _tpl_mod.list_all_templates(), "count": len(_tpl_mod.list_all_templates())}
 
 
 @app.get("/eval")
