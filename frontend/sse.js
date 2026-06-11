@@ -125,7 +125,7 @@ async function sendMessage() {
           'Content-Type': 'application/json',
           ...(typeof API_TOKEN !== 'undefined' ? {'Authorization': 'Bearer ' + API_TOKEN} : {})
         },
-        body: JSON.stringify({ message: text, session_id: sessionId, mode: currentMode, template: selectedTemplate })
+        body: JSON.stringify({ message: text, session_id: sessionId, mode: currentMode })
       });
 
       if (!response.ok) throw new Error('HTTP ' + response.status);

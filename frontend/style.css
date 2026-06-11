@@ -221,15 +221,6 @@ body { font-family: var(--font-body); background: var(--bg-primary); color: var(
 .btn-send:hover { background: var(--accent-gold); transform: scale(1.05); }
 .btn-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 .quick-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
-.template-selector { display: flex; align-items: center; gap: 8px; margin-top: 10px;
-  padding: 6px 0 2px; border-top: 1px solid var(--border-light); }
-.template-label { font-size: 11px; color: var(--text-light); white-space: nowrap; }
-.template-selector select { background: var(--bg-secondary); color: var(--text);
-  border: 1px solid var(--border-light); border-radius: 6px; padding: 4px 8px;
-  font-size: 12px; max-width: 280px; cursor: pointer; }
-.template-selector select optgroup { font-size: 11px; color: var(--text-light);
-  font-style: normal; padding: 2px 4px; }
-.template-selector select option { font-size: 12px; padding: 2px 4px; }
 .quick-btn { padding: 5px 12px; border-radius: 18px; border: 1px solid var(--border-medium); background: var(--bg-card); color: var(--text-secondary); font-size: 11px; cursor: pointer; transition: var(--transition); white-space: nowrap; }
 .quick-btn:hover { border-color: var(--accent-rose); color: var(--accent-rose); background: var(--accent-cream); }
 

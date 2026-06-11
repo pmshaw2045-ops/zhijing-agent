@@ -241,7 +241,7 @@ class TestChatSSE:
         import backend.server as server_mod
         captured = {}
 
-        async def mock_pipeline(message, session_id, mode, clarify_answer, **kwargs):
+        async def mock_pipeline(message, session_id, mode, clarify_answer):
             captured["session_id"] = session_id
             captured["mode"] = mode
             return
@@ -265,7 +265,7 @@ class TestChatSSE:
         import backend.server as server_mod
         captured = {}
 
-        async def mock_pipeline(message, session_id, mode, clarify_answer, **kwargs):
+        async def mock_pipeline(message, session_id, mode, clarify_answer):
             captured["mode"] = mode
             return
             yield
