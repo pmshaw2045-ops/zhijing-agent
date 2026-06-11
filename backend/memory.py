@@ -421,40 +421,6 @@ class MemorySystem:
         working = self.get_working_memory(session_id)
         return working.get("context", {})
 
-    def build_context_prompt(self, session_id: str, intent: dict = None) -> str:
-        """构建用于prompt注入的上下文字符串"""
-        context = self.get_working_context(session_id)
-        parts = []
-
-        # 1. 当前分析主题
-        topic = context.get("current_topic", {})
-        if topic.get("category"):
-            parts.append(f"当前分析品类: {topic['category']}")
-            if topic.get("style"):
-                parts.append(f"风格: {topic['style']}")
-            if topic.get("price_focus"):
-                parts.append(f"价格关注: {topic['price_focus']}")
-
-        # 2. 上轮分析引用
-        last = context.get("last_analysis")
-        if last and last.get("category") == topic.get("category", ""):
-            parts.append(f"上轮分析发现: {last.get('key_findings', '')}")
-
-        # 3. 用户偏好
-        prefs = context.get("user_preferences", {})
-        if prefs.get("style_preferences"):
-            parts.append(f"用户偏好风格: {', '.join(prefs['style_preferences'])}")
-        if prefs.get("category_interests"):
-            parts.append(f"用户关注品类: {', '.join(prefs['category_interests'])}")
-
-        # 4. 历史分析摘要（不同品类的也展示）
-        history = context.get("analysis_history", [])
-        if len(history) > 1:
-            parts.append("历史分析记录:")
-            for h in history[-3:]:
-                parts.append(f"  · {h['category']}: {h['key_findings'][:80]}")
-
-        return "\n".join(parts) if parts else ""
 
     def append_session_chain(self, session_id: str, user_query: str,
                              assistant_summary: str):
@@ -480,11 +446,6 @@ class MemorySystem:
         """获取长期记忆"""
         lt = self._store.get("long_term", {})
         return lt.get(key, lt) if key else lt
-
-    def update_long_term(self, key: str, value):
-        """更新长期记忆"""
-        self._store["long_term"][key] = value
-        self.mark_dirty()
 
     def add_knowledge(self, snippet: str, tags: list = None):
         """添加知识片段到长期记忆"""

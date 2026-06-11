@@ -141,7 +141,7 @@ FastAPI Server (backend/server.py)
 │   ├── memory.py          590行  六层记忆系统 + RAG语义检索
 │   ├── tools.py           444行  8个工具实现
 │   ├── report.py          255行  JSON报告生成器
-│   ├── intent_registry.py 243行  意图元数据中心
+│   ├── intent_registry.py 233行  意图元数据中心
 │   ├── config.py          170行  配置管理
 │   ├── llm_client.py      194行  LLM客户端
 │   ├── precheck.py        137行  前置校验引擎

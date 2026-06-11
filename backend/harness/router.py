@@ -40,9 +40,6 @@ class CostRouter:
         """是否执行反思修正"""
         return complexity >= Complexity.MEDIUM
 
-    def should_include_heavy_tools(self, complexity: Complexity) -> bool:
-        """是否执行重量级工具（price_analyze, competitive_analyze, scoring_engine）"""
-        return complexity >= Complexity.MEDIUM
 
     def get_max_retries(self, complexity: Complexity) -> int:
         """最大重试次数"""
@@ -52,14 +49,6 @@ class CostRouter:
             return 1
         return 0
 
-    def estimate_tokens(self, complexity: Complexity) -> int:
-        """估算 token 消耗"""
-        estimates = {
-            Complexity.SIMPLE: 2000,
-            Complexity.MEDIUM: 5000,
-            Complexity.COMPLEX: 12000,
-        }
-        return estimates.get(complexity, 5000)
 
     def complexity_label(self, complexity: Complexity) -> str:
         return {Complexity.SIMPLE: "轻量", Complexity.MEDIUM: "标准", Complexity.COMPLEX: "完整"}.get(complexity, "未知")

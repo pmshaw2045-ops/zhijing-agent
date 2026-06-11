@@ -189,19 +189,12 @@ INTENT_REGISTRY = {
 # 便捷查询函数
 # ============================================================
 
-def get_all_modes() -> list[str]:
-    return list(INTENT_REGISTRY.keys())
-
 def get_mode(name: str) -> str | None:
     """中文名 → mode key"""
     for mode, info in INTENT_REGISTRY.items():
         if info["name"] == name:
             return mode
     return None
-
-def get_name(mode: str) -> str:
-    """mode key → 中文名"""
-    return INTENT_REGISTRY.get(mode, {}).get("name", mode)
 
 def get_complexity(mode: str) -> Complexity:
     return INTENT_REGISTRY.get(mode, {}).get("complexity", Complexity.MEDIUM)
@@ -214,9 +207,6 @@ def get_decompose_rule(mode: str) -> str:
 
 def get_intent_signals(mode: str) -> list[str]:
     return INTENT_REGISTRY.get(mode, {}).get("intent_signals", [])
-
-def get_display_name(mode: str) -> str:
-    return INTENT_REGISTRY.get(mode, {}).get("display", mode)
 
 def route_by_name(cn_name: str) -> str:
     """中文意图名 → mode key"""

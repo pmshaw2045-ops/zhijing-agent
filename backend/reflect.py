@@ -1,7 +1,6 @@
 """
 ReflectionEngine — 报告质量反思修正
 """
-import json
 import logging
 
 from .llm_client import chat, extract_json, MODEL_CHAT

@@ -38,13 +38,7 @@ class ToolRegistry:
         """获取工具Schema"""
         return self._tools.get(self.resolve(name))
 
-    def list_all(self) -> list[dict]:
-        """列出所有工具的dict表示"""
-        return [s.to_dict() for s in self._tools.values()]
 
-    def list_names(self) -> list[str]:
-        """列出所有工具名"""
-        return list(self._tools.keys())
 
     def validate(self, name: str) -> bool:
         """检查工具是否存在"""
