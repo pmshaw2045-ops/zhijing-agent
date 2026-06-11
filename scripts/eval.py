@@ -22,7 +22,7 @@ import asyncio
 import re
 import sys
 import os
-import httpx
+import requests
 from pathlib import Path
 from typing import Optional
 
@@ -382,45 +382,49 @@ async def _call_agent_api(query: str, mode: str = "selection",
     start_time = time.time()
 
     try:
-        async with httpx.AsyncClient(timeout=API_TIMEOUT) as client:
-            resp = await client.post(
+        # Use requests via to_thread (httpx 0.28.1 has localhost bug on this macOS)
+        def _do_request():
+            with requests.post(
                 f"{API_BASE}/api/chat",
                 json={"message": eval_query, "session_id": session_id, "mode": mode},
                 headers={"Content-Type": "application/json"},
-            )
-            if resp.status_code != 200:
-                result["has_error"] = True
-                result["error_message"] = f"HTTP {resp.status_code}"
-                result["execution_time_ms"] = round((time.time() - start_time) * 1000)
-                return result
+                stream=True, timeout=API_TIMEOUT
+            ) as resp:
+                if resp.status_code != 200:
+                    return {"error": f"HTTP {resp.status_code}"}
 
-            # 解析 SSE 流
-            buffer = ""
-            async for chunk in resp.aiter_text():
-                buffer += chunk
-                # 处理完整事件
-                while "\n\n" in buffer:
-                    event_str, buffer = buffer.split("\n\n", 1)
-                    for line in event_str.split("\n"):
-                        if not line.startswith("data: "):
-                            continue
-                        try:
-                            event = json.loads(line[6:])
-                            _process_event(event, result)
-                        except json.JSONDecodeError:
-                            continue
+                # Parse SSE stream
+                result["phases_completed"] = []
+                buffer = ""
+                for chunk in resp.iter_content(chunk_size=None, decode_unicode=True):
+                    if chunk:
+                        buffer += chunk
+                        while "\n\n" in buffer:
+                            event_str, buffer = buffer.split("\n\n", 1)
+                            for line in event_str.split("\n"):
+                                if not line.startswith("data: "):
+                                    continue
+                                try:
+                                    event = json.loads(line[6:])
+                                    _process_event(event, result)
+                                except json.JSONDecodeError:
+                                    continue
+                if buffer.strip():
+                    for line in buffer.split("\n"):
+                        if line.startswith("data: "):
+                            try:
+                                event = json.loads(line[6:])
+                                _process_event(event, result)
+                            except json.JSONDecodeError:
+                                pass
+                return None
 
-            # 处理最后一个事件
-            if buffer.strip():
-                for line in buffer.split("\n"):
-                    if line.startswith("data: "):
-                        try:
-                            event = json.loads(line[6:])
-                            _process_event(event, result)
-                        except json.JSONDecodeError:
-                            pass
+        err = await asyncio.to_thread(_do_request)
+        if err:
+            result["has_error"] = True
+            result["error_message"] = err.get("error", str(err))
 
-    except httpx.TimeoutException:
+    except requests.Timeout:
         result["has_error"] = True
         result["error_message"] = f"超时（{API_TIMEOUT}s）"
     except Exception as e:
