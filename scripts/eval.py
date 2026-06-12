@@ -45,8 +45,14 @@ PARALLEL = int(os.environ.get("EVAL_PARALLEL", "3"))  # 并行数
 # ══════════════════════════════════════════════════
 
 def _get_report_text(result_data: dict) -> str:
-    """从 SSE result 事件提取报告内容"""
-    return result_data.get("report_text", "") or result_data.get("content", "")
+    """从 SSE result 事件提取报告内容
+
+    priority: _report_parsed（完整JSON已解析）> content（原始串）> report_text（截断）
+    """
+    parsed = result_data.get("_report_parsed")
+    if parsed:
+        return json.dumps(parsed, ensure_ascii=False)
+    return result_data.get("content", "") or result_data.get("report_text", "")
 
 
 def _parse_report_json(report_text: str) -> Optional[dict]:
@@ -469,7 +475,10 @@ def _process_event(event: dict, result: dict):
     if etype == "result":
         content = event.get("content", "") or data.get("content", "")
         result["has_report"] = bool(content and len(content) > 50)
-        result["report_text"] = content[:5000]  # 截断保存
+        # 先解析 JSON 再截断保存，确保规则检查能读到完整结构
+        _parsed = _parse_report_json(content)
+        result["_report_parsed"] = _parsed
+        result["report_text"] = content[:5000]  # 截断保存（仅用于展示）
 
     # 澄清
     if etype == "clarify":
