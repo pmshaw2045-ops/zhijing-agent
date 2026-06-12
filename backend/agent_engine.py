@@ -142,6 +142,10 @@ class AgentEngine:
             if not intent_modified:
                 user_input = self.conversation.augment_query(user_input, scenario, wm)
 
+        # 追问场景：短查询缺少品类/意图信号时，继承上一次intent上下文
+        if scenario != Scenario.NEW_QUERY and last_intent and len(user_input) < 30:
+            user_input = f"[上轮意图:{last_intent}] {user_input}"
+
         # ====== 缓存检查 (24h相同query命中, 在LLM调用前) ======
         cache_key = f"{user_input}|{mode or 'auto'}"
         if cache_key in self._report_cache:
