@@ -155,14 +155,24 @@ class MemorySystem:
     # === 滑动窗口 + 递归摘要 ===
     SLIDING_WINDOW = 10  # 保留最近 N 条原始消息
 
-    def get_injectable_context(self, session_id: str) -> str:
-        """返回可直接注入LLM prompt的Markdown格式记忆上下文"""
+    def get_injectable_context(self, session_id: str, intent_type: str = "") -> str:
+        """返回可直接注入LLM prompt的Markdown格式记忆上下文
+
+        Args:
+            session_id: 会话ID
+            intent_type: 当前意图类型。提供后只注入同意图类型的分析历史，
+                        防止跨意图上下文污染。Phase 1（意图识别）不传此参数
+                        以保留全量上下文；Phase 6（报告生成）必须传以隔离历史。
+        """
         session = self._get_session(session_id)
         conv = session.get("conversation", [])
         working = session.get("working", {})
         summary = session.get("summary", "")
         topic = session.get("topic_context", {})
         history = session.get("analysis_history", [])
+        # 意图过滤：只保留同意图类型的分析历史
+        if intent_type and history:
+            history = [h for h in history if h.get("intent", "") == intent_type]
 
         parts = []
 
@@ -410,10 +420,16 @@ class MemorySystem:
                     if syns_new & syns_hist:
                         cat_match = True
             intent_match = intent_type and h.get("intent", "") == intent_type
-            if cat_match or intent_match:
-                related.append({**h, "_score": -1, "_source": "keyword"})
-                if len(related) >= 3:
-                    break
+            if intent_type:
+                # 已知意图类型时只允许精确意图匹配，防止跨意图污染
+                if intent_match:
+                    related.append({**h, "_score": -1, "_source": "keyword"})
+            else:
+                # 无意图类型时（Phase 1 意图识别阶段）用类目匹配兜底
+                if cat_match:
+                    related.append({**h, "_score": -1, "_source": "keyword"})
+            if len(related) >= 3:
+                break
         return related, search_info
 
     def get_working_context(self, session_id: str) -> dict:

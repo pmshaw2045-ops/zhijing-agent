@@ -48,7 +48,8 @@ FastAPI Server (backend/server.py)
     │   ├── L3 主题上下文: 品类/品牌/季节/平台偏好
     │   ├── L4 分析历史: record_analysis → title提取
     │   ├── L5 长期记忆: domains/brands/seasons/user_prefs
-    │   └── RAG语义检索: LLM embedding → SQLite向量 → 余弦相似度排名
+    │   ├── RAG语义检索: LLM embedding → SQLite向量 → 余弦相似度排名
+    │   └── 意图隔离注入: Phase 6 按intent_type过滤分析历史，防止上下文污染
     │
     ├── Storage (backend/store.py)
     │   ├── SQLiteBackend: 默认存储（WAL模式并发安全）
@@ -108,6 +109,8 @@ FastAPI Server (backend/server.py)
 - list 字段用"、"连接而非 Python 列表表示
 - 共享函数 `goal_to_text()` 在 `backend/intent.py` 中，所有 prompt builder 统一调用
 - 当前通过区域：DecomposeEngine (decompose_engine.py) ✅ ReportBuilder (report.py) ✅ ReflectionEngine (reflect.py) ✅
+- **上下文隔离**: Phase 6 调用 `get_injectable_context(intent_type)` 按意图类型过滤分析历史；
+  `find_related_analyses()` 在 intent_type 已知时只取精确意图匹配，防止跨意图污染
 
 ## DAG 拆解策略
 
@@ -138,7 +141,7 @@ FastAPI Server (backend/server.py)
 ├── docs/                  ← 12 文档
 ├── backend/               ← 22 模块 / 4,700+ 行
 │   ├── agent_engine.py    506行  Agent Pipeline
-│   ├── memory.py          590行  六层记忆系统 + RAG语义检索
+│   ├── memory.py          597行  五层记忆系统 + RAG语义检索 + 意图隔离注入
 │   ├── tools.py           444行  8个工具实现
 │   ├── report.py          255行  JSON报告生成器
 │   ├── intent_registry.py 233行  意图元数据中心

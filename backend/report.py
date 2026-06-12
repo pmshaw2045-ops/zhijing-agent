@@ -216,7 +216,8 @@ JSON规则：
         if not self.memory:
             return ""
         try:
-            ctx = self.memory.get_injectable_context(session_id)
+            intent_type = intent.get("intent_type", "") if intent else ""
+            ctx = self.memory.get_injectable_context(session_id, intent_type=intent_type)
             return f"\n\n---\n## 🧠 Agent记忆上下文\n{ctx}" if ctx else ""
         except Exception as e:
             logger.warning(f"Memory context for report failed: {e}")
