@@ -726,9 +726,11 @@ def _append_to_cache(case_result: dict):
 
 
 def _save_final_cache(full_result: dict):
-    """保存最终缓存"""
+    """保存最终缓存（更新磁盘 + 更新内存 _cache）"""
     global _cache_save_counter
     _cache_save_counter = 0
+    _cache["summary"] = full_result.get("summary")
+    _cache["cases"] = full_result.get("cases", [])
     try:
         EVAL_CACHE.parent.mkdir(parents=True, exist_ok=True)
         EVAL_CACHE.write_text(
