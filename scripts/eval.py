@@ -488,7 +488,9 @@ def _process_event(event: dict, result: dict):
     # 错误
     if etype == "error":
         result["has_error"] = True
-        result["error_message"] = data.get("message", str(data))[:200]
+        result["error_message"] = (
+            event.get("message", "") or data.get("message", "") or str(data)
+        )[:200]
 
     # 图片结果
     if etype == "image_result":
